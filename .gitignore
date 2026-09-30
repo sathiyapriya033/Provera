@@ -23,3 +23,9 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# typescript / testing / misc (merged from create-next-app defaults)
+*.tsbuildinfo
+next-env.d.ts
+/coverage
+*.pem
