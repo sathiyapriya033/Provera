@@ -1,3 +1,5 @@
+import UploadForm from "@/components/upload/upload-form";
+
 const PLACEHOLDER_NAV = [
   { label: "Workflow", href: "/", active: true },
   { label: "Inspector", href: "#workflow-placeholder", active: false },
@@ -8,8 +10,8 @@ const WORKFLOW_STEPS = [
   {
     title: "Upload & analysis",
     description:
-      "Upload field media through Cloudinary and obtain supported analysis, OCR and visual signals.",
-    state: "Coming soon",
+      "Upload field media through Cloudinary (live). Analysis, OCR and visual signals arrive in Phase 2.",
+    state: "Upload ready",
   },
   {
     title: "Forensic consistency score",
@@ -93,6 +95,31 @@ export default function Home() {
             validated fraud probability, or make a legally binding fraud
             determination.
           </p>
+        </section>
+
+        <section
+          id="upload"
+          aria-labelledby="upload-heading"
+          className="mx-auto w-full max-w-5xl px-4 pb-12 sm:px-6"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <h2
+              id="upload-heading"
+              className="text-lg font-semibold text-slate-900"
+            >
+              Upload field media
+            </h2>
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              Live — real Cloudinary uploads
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-slate-600">
+            Images are validated (type and size) and stored directly in the
+            configured Cloudinary account. Uploading does not run analysis.
+          </p>
+          <div className="mt-4">
+            <UploadForm />
+          </div>
         </section>
 
         <section
