@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ScorePanel from "@/components/analysis/score-panel";
 import type {
   AnalysisContentTag,
   AnalysisMediaQualityValue,
@@ -367,6 +368,8 @@ export default function AnalysisPanel({ publicId }: { publicId: string }) {
             })}
           </div>
 
+          <ScorePanel analysis={analysis} />
+
           {analysis.limitations.length > 0 && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="text-sm font-semibold text-amber-900">
@@ -381,10 +384,11 @@ export default function AnalysisPanel({ publicId }: { publicId: string }) {
           )}
 
           <p className="text-xs leading-relaxed text-slate-500">
-            These are raw signals returned by Cloudinary&apos;s analysis APIs
-            for this asset. Provera does not calculate a score or status at this
-            step, and unavailable capabilities are reported as unavailable —
-            never estimated.
+            The signal cards show raw values returned by Cloudinary&apos;s
+            analysis APIs for this asset. The consistency score is calculated
+            separately by the deterministic forensic engine from those signals.
+            Unavailable capabilities are reported as unavailable — never
+            estimated.
           </p>
 
           <div className="flex flex-wrap gap-2">

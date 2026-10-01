@@ -10,14 +10,14 @@ const WORKFLOW_STEPS = [
   {
     title: "Upload & analysis",
     description:
-      "Upload field media and run Cloudinary's supported analysis workflow (live). Deterministic scoring arrives with the forensic engine.",
+      "Upload field media and run Cloudinary's supported analysis workflow (live).",
     state: "Upload + analysis live",
   },
   {
     title: "Forensic consistency score",
     description:
-      "A deterministic, explainable score across five weighted signals with visible reasons.",
-    state: "Coming soon",
+      "A deterministic, explainable score across five weighted signals with visible reasons (live).",
+    state: "Scoring live",
   },
   {
     title: "Verification record & QR",
