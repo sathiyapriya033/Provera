@@ -29,3 +29,6 @@ Thumbs.db
 next-env.d.ts
 /coverage
 *.pem
+
+# local verification-record store (Phase 4 — see docs/VERIFICATION_MODEL.md)
+/data/

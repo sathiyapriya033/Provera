@@ -30,30 +30,194 @@ type VerificationRecord = {
 ```
 
 The implementation may extend this shape, but the core semantics must remain stable.
+## Implemented record (Phase 4)
 
-## Record ID
+Implemented in `src/lib/verification/record.ts` under schema version
+`provera-record@1` (`RECORD_SCHEMA_VERSION`). The persisted shape extends the
+conceptual shape above:
 
-Use a human-readable identifier such as:
-
-```text
-PV-2026-XXXXXXXX
+```ts
+type VerificationRecord = {
+  recordId: string;              // PV-YYYY-XXXXXXXX
+  schemaVersion: string;         // "provera-record@1"
+  asset: {
+    publicId: string;
+    resourceType: string;
+    format?: string;             // omitted when unknown, never invented
+    version?: number;
+    secureUrl?: string;
+  };
+  score: number;                 // 0–100
+  status: "VERIFIED" | "REVIEW" | "FLAGGED";
+  signals: {
+    metadataAvailability: number | null;
+    ocrConsistency: number | null;
+    visualConsistency: number | null;
+    duplicateIndicator: number | null;
+    mediaQuality: number | null;
+  };
+  reasons: string[];             // prefixed "Positive: ", "Concern: ", "Note: "
+  flags: string[];               // "unavailable:<component>", "concern:<component>"
+  coverage: number;              // scoreable weight out of 100 (Phase 3 semantics)
+  context: string | null;        // submitted claim, when one was supplied
+  analysisId: string | null;     // analysis operation this record was built from
+  timestamp: string;             // ISO-8601 UTC creation time
+  engineVersion: string;         // "provera-forensic@1"
+  recordHash: string;            // SHA-256 hex of the canonical record
+};
 ```
 
-The exact generation method should avoid collisions.
+Documented extensions and their rationale:
 
-## Canonical record
+* `schemaVersion`, `coverage`, `context`, `analysisId`, `flags` and the optional
+  asset fields make the record self-describing without a second lookup.
+* The five `signals.*` slots reuse the Phase 3 component keys
+  (`metadata`, `ocrClaim`, `visualContent`, `duplicate`, `mediaQuality`).
+  Components excluded from scoring are stored as `null` — unavailable data is
+  never imputed into a favorable number.
+* `reasons` keep their kind as a text prefix so the "why" survives storage; the
+  `flags` array is the machine-readable equivalent.
 
-Before hashing, construct a canonical representation with deterministic key ordering and normalized values.
+## Record ID (implemented)
 
-Do not hash a JSON string whose key order can vary.
+`createRecordId()` produces `PV-YYYY-XXXXXXXX`:
 
-## Record hash
+* `YYYY` is the UTC year at creation time.
+* `XXXXXXXX` is 8 characters drawn from a 32-character alphabet with `I`, `O`,
+  `0` and `1` removed (`A–Z` minus `I`/`O`, plus `2–9`) — 40 bits of entropy from
+  5 random bytes.
 
-Use Node.js `crypto` to compute an application-level SHA-256 hash of the canonical verification record.
+Uniqueness is enforced by `allocateRecordId()` in `src/lib/verification/store.ts`:
+it re-generates the ID while the store already contains it and fails the request
+rather than overwriting an existing record. The ID is validated everywhere with
+`RECORD_ID_PATTERN` before it touches the filesystem, so no caller-supplied
+string can escape the record directory.
 
-The hash identifies the verification state represented by the record.
+## Canonical record and hash (implemented)
 
-It does not make the original image immutable and does not prove historical authenticity.
+Exact procedure, so it can be reproduced independently:
+
+1. Take the record and remove the `recordHash` field.
+2. Recursively sort object keys lexicographically. Array order is preserved —
+   `reasons` and `flags` are ordered data.
+3. Compute `JSON.stringify(...)` of the sorted structure (no whitespace).
+4. `recordHash = SHA-256 hex of that UTF-8 string`.
+
+`computeRecordHash()` performs steps 1–4; `canonicalizeRecord()` returns the
+sorted structure itself, which is what the implementation hashes — a JSON string
+with variable key order is never hashed. `verifyRecordIntegrity()` recomputes the
+hash and compares it with `timingSafeEqual`.
+
+Determinism, key-order independence and tamper detection are covered by
+`src/lib/verification/record.test.ts` (run with `npm test`).
+
+Limitation (restated because it matters): the hash is application-level tamper
+evidence for this record. It does not make the original image immutable, does not
+prove historical authenticity, and anyone holding write access to the store can
+replace record and hash together.
+
+## Persistence (implemented)
+
+Selected approach: one JSON file per record under
+`<cwd>/data/records/<recordId>.json`. No database, no external service and no new
+environment variables — the acceptance criteria require retrieval by ID, not
+query or scale.
+
+Implementation in `src/lib/verification/store.ts`:
+
+* `saveRecord()` creates the directory when needed and writes atomically (temp
+  file + `rename`), so a crash cannot leave a half-written record under the
+  final name.
+* `getRecord()` reads a record by ID; an unknown or malformed ID raises
+  `RECORD_NOT_FOUND`.
+* `deleteRecord()` exists only for rollback (see the metadata section below).
+* `data/` is git-ignored; records are never committed.
+
+Honest limitations:
+
+* Records live on the local filesystem of the process that served the request.
+  They survive server restarts, but not container/host rebuilds, redeploys or
+  moves.
+* Single-instance only: no replication and no cross-instance locking, so two
+  running instances do not share records.
+* The store is not tamper-proof and has no access control beyond file
+  permissions; `recordHash` makes edits detectable, not impossible.
+* No audit queue, no search and no retention policy.
+
+## Cloudinary structured metadata (implemented)
+
+Seven account-level structured-metadata fields were created through the Admin API
+(`api.add_metadata_field`); no manual dashboard step is required, and re-running
+creation is idempotent:
+
+| Field | Type | Stored value |
+| --- | --- | --- |
+| `provera_status` | string | `VERIFIED` / `REVIEW` / `FLAGGED` |
+| `provera_score` | integer | record score (0–100) |
+| `provera_record_id` | string | `PV-YYYY-XXXXXXXX` |
+| `provera_record_hash` | string | full SHA-256 record hash |
+| `provera_timestamp` | string | ISO-8601 record timestamp |
+| `provera_version` | string | engine version (`provera-forensic@1`) |
+| `provera_flags` | string | comma-separated flags (empty string when none) |
+
+`src/lib/verification/metadata.ts` writes them with
+`uploader.update_metadata(values, [publicId])` — one Upload API call per record,
+keyed by the asset `publicId`, with no separate asset-ID resolution step.
+
+Failure behaviour: a failed update raises `MetadataAttachError` and
+`POST /api/verify` answers `METADATA_UPDATE_FAILED`. The persisted record is
+rolled back first, so a stored record never exists without its asset metadata.
+Cloudinary errors pass through the shared `describeCloudinaryError` helper and
+the API secret is redacted before anything is thrown or logged.
+
+## Endpoints (implemented)
+
+`POST /api/verify`
+
+```json
+{
+  "publicId": "provera/example",
+  "context": "Accident on Main Road",
+  "referenceHashes": ["c9635a63eacf11c1"]
+}
+```
+
+`context` and `referenceHashes` are optional; `referenceHashes` feed the Phase 3
+duplicate comparison. The server re-runs the Cloudinary analysis for `publicId`,
+re-runs the forensic engine, builds the record, persists it and attaches the
+metadata. Response (HTTP 201):
+
+```json
+{
+  "ok": true,
+  "data": { "record": {}, "integrityVerified": true, "metadataAttached": true }
+}
+```
+
+* The record is always derived from server-observed analysis data. A
+  client-supplied analysis or score is never trusted, because a persisted record
+  must not be forgeable by editing request fields.
+* Errors: `INVALID_INPUT` (400), `ANALYSIS_FAILED` / `ANALYSIS_UNAVAILABLE`
+  (provider status), `METADATA_UPDATE_FAILED` (502), `VERIFICATION_FAILED` (500).
+
+`GET /api/verify/:recordId`
+
+Returns `{ "ok": true, "data": { "record": {}, "integrity": { "verified": true, "computedHash": "…" } } }`,
+where `computedHash` is recomputed from the stored record. An invalid ID is
+`INVALID_INPUT` (400); an unknown record is `RECORD_NOT_FOUND` (404).
+
+## Record UI (implemented)
+
+`src/components/verification/record-panel.tsx` is rendered by the score panel
+once a score exists. It requests `POST /api/verify` for the analysed asset and
+displays the stored record: status, score, record ID, asset identity, timestamp,
+engine and schema versions, coverage, signal breakdown, flags, the full record
+hash with the integrity-check result, the recorded reasons, and a link to
+`/api/verify/<recordId>` for the raw JSON.
+
+Honest UI language only: the panel states that the hash detects later edits to
+the record, that it does not make the original image immutable, and that it does
+not prove authenticity.
 
 ## Signed artifact
 

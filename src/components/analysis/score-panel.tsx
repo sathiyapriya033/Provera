@@ -8,6 +8,7 @@ import type {
   ReasonKind,
 } from "@/lib/forensic/engine";
 import type { ApiResponse, NormalizedAnalysis } from "@/types";
+import RecordPanel from "@/components/verification/record-panel";
 
 type ScorePhase = "idle" | "running" | "done" | "error";
 
@@ -206,6 +207,8 @@ export default function ScorePanel({ analysis }: { analysis: NormalizedAnalysis 
               never counted as inconsistencies.
             </p>
           )}
+
+          <RecordPanel publicId={analysis.publicId} context={analysis.context} />
 
           <button
             type="button"

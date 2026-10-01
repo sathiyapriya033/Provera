@@ -53,35 +53,65 @@ Accept an uploaded asset reference and optional context, run the configured anal
 
 ### Purpose
 
-Create a deterministic verification result from normalized analysis signals and context.
+Create, persist and attach a deterministic verification record for an uploaded asset (Phase 4).
+
+The server re-runs the Cloudinary analysis and the forensic engine for the supplied
+`publicId`; client-supplied analysis signals or scores are **not** trusted, because a
+persisted record must not be forgeable by editing request fields.
 
 ### Request
 
 ```json
 {
-  "asset": {
-    "publicId": "provera/example"
-  },
+  "publicId": "provera/example",
   "context": "Accident occurred on Main Road",
-  "signals": {
-    "metadataAvailability": 100,
-    "ocrConsistency": 80,
-    "visualConsistency": 90,
-    "duplicateIndicator": 100,
-    "mediaQuality": 90
+  "referenceHashes": ["c9635a63eacf11c1"]
+}
+```
+
+`context` (≤ 2000 chars) and `referenceHashes` (≤ 100 sixteen-character hex perceptual hashes) are optional. `context` is compared against detected image text by the OCR/claim signal; `referenceHashes` are compared against the asset's perceptual hash.
+
+### Response
+
+HTTP 201:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "record": { },
+    "integrityVerified": true,
+    "metadataAttached": true
   }
 }
 ```
 
-### Response
+`record` is the persisted `VerificationRecord` (see [Verification Model](VERIFICATION_MODEL.md)). `integrityVerified` reports whether the record hash was reproduced from the canonical record. `metadataAttached` is `true` only when the `provera_*` structured metadata fields were written to the Cloudinary asset.
 
-Returns the `VerificationRecord`.
+### Errors
+
+- `INVALID_INPUT` (400) — malformed body, `publicId`, `context` or `referenceHashes`.
+- `ANALYSIS_FAILED` / `ANALYSIS_UNAVAILABLE` — the Cloudinary analysis workflow did not complete.
+- `METADATA_UPDATE_FAILED` (502) — the record was rolled back because the Cloudinary metadata update failed.
+- `VERIFICATION_FAILED` (500) — record build, persistence or unexpected failure.
+- `INTERNAL_ERROR` (500) — Cloudinary credentials are not configured.
 
 ## GET `/api/verify/:recordId`
 
-Returns the verification record for a valid record ID.
+Returns the stored verification record and an integrity check.
 
-Invalid or unknown IDs return a clear not-found error.
+```json
+{
+  "ok": true,
+  "data": {
+    "record": { },
+    "integrity": { "verified": true, "computedHash": "…" }
+  }
+}
+```
+
+`computedHash` is recomputed from the stored record data; it should equal `record.recordHash`. An ID that does not match `PV-YYYY-XXXXXXXX` returns `INVALID_INPUT` (400); a well-formed but unknown ID returns `RECORD_NOT_FOUND` (404).
+
 
 ## GET `/api/artifact/:recordId`
 
@@ -93,7 +123,7 @@ Optional audit-queue endpoint. It should use Cloudinary metadata/search rather t
 
 ## POST `/api/metadata`
 
-Internal/server-side operation for writing verification metadata to the Cloudinary asset.
+Not implemented as a public endpoint. Verification metadata is written server-side by `/api/verify` through `src/lib/verification/metadata.ts` (`uploader.update_metadata`), so the Cloudinary secret never leaves the server and a metadata failure is handled together with record rollback.
 
 ## Error codes
 

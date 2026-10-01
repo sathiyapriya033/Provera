@@ -62,6 +62,20 @@ Recommended stack from the final specification:
 
 Create `.env.local` from `.env.example` and never commit secrets.
 
+## Verification records (Phase 4 — implemented)
+
+`POST /api/verify` re-analyses an uploaded asset on the server, scores it with the
+deterministic forensic engine, builds a canonical verification record and persists
+it. A record carries the score, status, signal breakdown, reasons, flags,
+engine/schema versions, timestamp, record ID and a SHA-256 integrity hash of the
+canonical record.
+
+- Records are stored as one JSON file per record under `data/records/` (git-ignored). They survive server restarts but not container/host rebuilds; the store is single-instance and not tamper-proof. No database and no additional environment variables are required.
+- `GET /api/verify/:recordId` returns the stored record and recomputes its hash.
+- The summary is attached to the Cloudinary asset as structured metadata (`provera_status`, `provera_score`, `provera_record_id`, `provera_record_hash`, `provera_timestamp`, `provera_version`, `provera_flags`). If the metadata update fails, the record is rolled back and the API reports `METADATA_UPDATE_FAILED`.
+
+Exact hash procedure, persistence limitations and endpoint details: [Verification Model](docs/VERIFICATION_MODEL.md) and [API Contract](docs/API_CONTRACT.md).
+
 ## Build order
 
 Follow `docs/BUILD_PLAN.md` exactly. Do not ask Cline to build the whole application in one prompt. Complete one phase, test it, review the diff, commit it, then move to the next phase.
