@@ -36,6 +36,7 @@ It produces a transparent **Forensic Consistency Score** and a signed verificati
 - [Product Requirements](docs/PRD.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Cloudinary Integration](docs/CLOUDINARY.md)
+- [Analysis Capabilities (verified)](docs/ANALYSIS_CAPABILITIES.md)
 - [Forensic Engine](docs/FORENSIC_ENGINE.md)
 - [Verification Model](docs/VERIFICATION_MODEL.md)
 - [API Contract](docs/API_CONTRACT.md)

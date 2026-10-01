@@ -24,17 +24,20 @@ export class CloudinaryUploadError extends Error {
 type CloudinaryErrorLike = {
   http_code?: number;
   message?: string;
-  error?: { message?: string };
+  error?: { message?: string; http_code?: number };
 };
 
-function describeCloudinaryError(error: unknown): {
+export function describeCloudinaryError(error: unknown): {
   http_code?: number;
   message: string;
 } {
   if (error && typeof error === "object") {
     const candidate = error as CloudinaryErrorLike;
+    // Admin API errors nest http_code under `error`; Upload API errors carry
+    // it at the top level. Never read anything but message/code fields here:
+    // SDK error objects can embed request credentials.
     return {
-      http_code: candidate.http_code,
+      http_code: candidate.http_code ?? candidate.error?.http_code,
       message: candidate.message ?? candidate.error?.message ?? "Unknown Cloudinary error",
     };
   }

@@ -10,8 +10,8 @@ const WORKFLOW_STEPS = [
   {
     title: "Upload & analysis",
     description:
-      "Upload field media through Cloudinary (live). Analysis, OCR and visual signals arrive in Phase 2.",
-    state: "Upload ready",
+      "Upload field media and run Cloudinary's supported analysis workflow (live). Deterministic scoring arrives with the forensic engine.",
+    state: "Upload + analysis live",
   },
   {
     title: "Forensic consistency score",
@@ -115,7 +115,9 @@ export default function Home() {
           </div>
           <p className="mt-2 text-sm text-slate-600">
             Images are validated (type and size) and stored directly in the
-            configured Cloudinary account. Uploading does not run analysis.
+            configured Cloudinary account. Uploading does not run analysis —
+            each asset&apos;s signals are requested separately through the
+            analysis workflow.
           </p>
           <div className="mt-4">
             <UploadForm />

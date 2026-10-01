@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useState } from "react";
+import AnalysisPanel from "@/components/analysis/analysis-panel";
 import {
   ALLOWED_IMAGE_MIME_TYPES,
   MAX_IMAGE_UPLOAD_BYTES,
@@ -221,13 +222,16 @@ export default function UploadForm() {
           </div>
 
           <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            <p className="font-semibold text-slate-700">Analysis: not run</p>
+            <p className="font-semibold text-slate-700">
+              Upload success does not mean analysis succeeded
+            </p>
             <p className="mt-1">
-              Upload success does not mean analysis succeeded. Provera has not
-              analyzed this asset yet — analysis support arrives with the next
-              phase.
+              The asset above was stored in Cloudinary. Run the analysis
+              workflow separately to obtain its signals.
             </p>
           </div>
+
+          <AnalysisPanel publicId={asset.publicId} />
 
           <button
             type="button"

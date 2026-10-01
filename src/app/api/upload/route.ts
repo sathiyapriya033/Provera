@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     }
     console.error(
       "Unexpected upload error:",
-      error instanceof Error ? error.message : error,
+      error instanceof Error ? error.message : "non-Error object (contents suppressed)",
     );
     return errorResponse(
       "INTERNAL_ERROR",
