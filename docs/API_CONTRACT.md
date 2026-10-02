@@ -115,7 +115,50 @@ Returns the stored verification record and an integrity check.
 
 ## GET `/api/artifact/:recordId`
 
-Returns or redirects to the signed Cloudinary verification artifact.
+Returns the signed Cloudinary verification artifact for a stored record (Phase 5). The artifact is generated on demand from the record and is not stored by the application.
+
+```json
+{
+  "ok": true,
+  "data": {
+    "artifact": {
+      "artifactVersion": "provera-artifact@1",
+      "recordId": "PV-2026-XXXXXXXX",
+      "publicId": "provera/example",
+      "resourceType": "image",
+      "url": "https://res.cloudinary.com/<cloud>/image/upload/s--<signature>--/…/f_auto,q_auto/v1/provera/example",
+      "signed": true,
+      "signature": "<signature>",
+      "transformation": "b_rgb:0f172a,c_pad,h_1200,w_1200/…/f_auto,q_auto",
+      "layers": [{ "purpose": "Canvas 1200x1200, letterboxed…", "parameters": "b_rgb:0f172a,c_pad,h_1200,w_1200" }],
+      "canvas": { "width": 1200, "height": 1200 },
+      "optimization": { "fetchFormat": "auto", "quality": "auto" },
+      "verificationUrl": "http://localhost:3000/api/verify/PV-2026-XXXXXXXX"
+    },
+    "delivery": {
+      "verified": true,
+      "status": 200,
+      "contentType": "image/jpeg",
+      "contentLength": 149679,
+      "negotiated": [{ "accept": "image/webp", "contentType": "image/webp", "contentLength": 104000 }]
+    },
+    "signatureNote": "Signed with the Cloudinary account API secret…"
+  }
+}
+```
+
+`layers` are the transformation components in delivery order, for inspection. `delivery` is the result of a `HEAD` request against the signed URL: an artifact is only reported as generated when that response is HTTP 2xx with an `image/*` content type, and `negotiated` shows what `f_auto` returns when WebP is acceptable.
+
+### Errors
+
+- `INVALID_INPUT` (400) — malformed record ID.
+- `RECORD_NOT_FOUND` (404) — no stored record with that ID.
+- `ARTIFACT_FAILED` (502) — Cloudinary delivery did not return a usable image, or the CDN could not be reached.
+- `INTERNAL_ERROR` (500) — Cloudinary credentials are not configured.
+
+### Security
+
+`CLOUDINARY_API_SECRET` stays on the server; only the derived signed URL is returned. The signature is computed server-side and never lets the secret reach the client. Cloudinary enforces delivery signatures only for restricted assets — for these publicly delivered uploads the signature is an integrity marker for the requested transformation, not access control (verified in `docs/CLOUDINARY.md`).
 
 ## GET `/api/assets`
 

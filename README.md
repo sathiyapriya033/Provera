@@ -76,6 +76,14 @@ canonical record.
 
 Exact hash procedure, persistence limitations and endpoint details: [Verification Model](docs/VERIFICATION_MODEL.md) and [API Contract](docs/API_CONTRACT.md).
 
+## Signed verification artifact (Phase 5 — implemented)
+
+`GET /api/artifact/:recordId` renders the stored record as a Cloudinary dynamic transformation of the verified asset — a fixed 1200×1200 dark canvas with the photo letterboxed inside it, text layers carrying status, Forensic Consistency Score, record ID, short record hash, engine version, timestamp and the verification destination, and `f_auto`/`q_auto` for optimized delivery. Nothing is stored by the application: Cloudinary generates and caches the derived image on first request, and the API verifies with a `HEAD` request that an image really came back before reporting success.
+
+- The delivery URL is signed server-side (`sign_url: true`); `CLOUDINARY_API_SECRET` never leaves the server, and the artifact URL and every transformation component are returned for inspection.
+- Cloudinary enforces delivery signatures only for restricted assets. These assets use the default public delivery, so the signature authenticates the *requested transformation* — any edit to it invalidates the signature — but it is not access control. Measured evidence is in [Cloudinary Integration](docs/CLOUDINARY.md).
+- An artifact is tamper-evident evidence of what was recorded and assessed at that moment. It is not proof that the photograph is authentic, and it is not immutable.
+
 ## Build order
 
 Follow `docs/BUILD_PLAN.md` exactly. Do not ask Cline to build the whole application in one prompt. Complete one phase, test it, review the diff, commit it, then move to the next phase.

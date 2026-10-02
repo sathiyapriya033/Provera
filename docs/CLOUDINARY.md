@@ -61,23 +61,69 @@ type AnalysisSignals = {
 
 Provider-specific response shapes should be converted into this type at the Cloudinary adapter boundary.
 
-## Transformations
+## Artifact transformation (Phase 5 — implemented)
 
-The verification artifact should visibly contain:
+`src/lib/cloudinary/artifact.ts` builds a dynamic transformation of the verified
+asset per request; nothing is stored by Provera — Cloudinary generates and caches
+the derived image. The layout is fixed (artifact version `provera-artifact@1`), so
+the same record always produces the same URL and therefore the same signature.
 
-- status
-- score
-- verification record ID
-- short record hash
-- QR code
+Nine transformation components are chained in this order:
 
-Use automatic format and quality optimization where appropriate.
+1. `w_1200,h_1200,c_pad,b_rgb:0f172a` — fixed dark canvas with the source
+   letterboxed, so the layout never depends on the photo's aspect ratio.
+2–8. Text layers (`l_text:Arial_…`) carrying branding, the claim boundary, the
+   artifact version, status + score, record ID + **short** record hash, engine
+   version + timestamp, and the verification destination. North-anchored layers
+   hang from the top of the canvas and south-anchored layers from the bottom;
+   each layer also carries `b_rgb:0f172a` so text stays legible whatever the
+   photograph's brightness.
+9. `f_auto,q_auto` — automatic format and quality.
 
-## Signed delivery
+The artifact contains what a record holds: status, Forensic Consistency Score,
+record ID, short hash, engine version, timestamp and the verification destination.
+The QR code of Phase 6 will be added as one more layer. The full record hash is
+deliberately never printed on the artifact, so a truncated hash cannot be
+mistaken for it.
 
-Use Cloudinary signed delivery for the generated transformation. The signature protects the requested transformation URL from unauthorized modification.
+## Signed delivery — what was actually verified
 
-It does not prove that the underlying photograph is historically genuine.
+The artifact URL is generated with the Cloudinary SDK using `sign_url: true`, so
+the signature is computed from the account API secret, which never leaves the
+server. The following was measured against this account before implementation and
+is re-checkable at any time by requesting the same URL with a modified signature or
+a modified transformation:
+
+| Request | Observed result |
+|---|---|
+| Signed artifact URL | HTTP 200, `image/jpeg`, ~150 kB |
+| Same URL with `Accept: image/webp` | HTTP 200, `image/webp` (this is `f_auto` working) |
+| Same URL with the `s--…--` signature removed | HTTP 200 |
+| Same URL with a bogus signature (`s--AAAAAAAA--`) | HTTP 200 |
+| Same URL with overlay text edited, signature unchanged | HTTP 200, different pixels |
+
+Stated plainly, because the plan forbids pretending:
+
+* The signature authenticates the **requested transformation**: it is derived from
+  the API secret over the transformation string, so an edited transformation no
+  longer matches the signature it carries.
+* Cloudinary only **rejects** unsigned or tampered delivery URLs for *restricted*
+  assets. This project uploads with the default public delivery, so Cloudinary
+  serves the same transformation with or without a valid signature. The signature
+  is therefore an integrity marker for the delivered transformation here, not an
+  access-control mechanism.
+* Nothing about the signature says the photograph is authentic, and the artifact
+  is not immutable.
+
+Enforcing delivery signatures would require a different delivery model for the
+source asset (`type: "authenticated"` or delivery tokens). That changes how the
+uploaded media is served, so it is deliberately not part of this phase; the
+limitation is stated here, in `docs/VERIFICATION_MODEL.md` and in the UI.
+
+Application behaviour: `GET /api/artifact/:recordId` builds the URL and then
+issues a `HEAD` request against it. Only an HTTP 2xx `image/*` response is
+reported as a generated artifact; anything else returns `ARTIFACT_FAILED` and no
+artifact is shown.
 
 ## Inspector Mode
 

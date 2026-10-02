@@ -219,27 +219,39 @@ Honest UI language only: the panel states that the hash detects later edits to
 the record, that it does not make the original image immutable, and that it does
 not prove authenticity.
 
-## Signed artifact
+## Signed artifact (Phase 5 — implemented)
 
-The artifact is a dynamically transformed representation of the verification record associated with the Cloudinary asset.
+The artifact is a **Cloudinary dynamic transformation of the verified asset**,
+built from the stored record by `src/lib/cloudinary/artifact.ts` (artifact
+version `provera-artifact@1`). Provera stores nothing for the artifact: the URL is
+generated per request, Cloudinary renders and caches the derived image on first
+request, and the application verifies with a `HEAD` request that an image really
+came back before reporting success.
 
-It should show:
+It shows status, Forensic Consistency Score, record ID, **short** record hash,
+engine version, record timestamp, Provera branding, the artifact version, and the
+verification destination. The short hash is the first 16 characters of
+`recordHash`; the full hash stays in the record so that a printed artifact can
+never be mistaken for a complete integrity check. Phase 6 adds the QR code as one
+more layer.
 
-- VERIFIED / REVIEW / FLAGGED
-- Forensic Consistency Score
-- Record ID
-- Short record hash
-- QR code
+Determinism: the layout is fixed, so the same record always produces the same
+transformation, the same URL and the same signature.
 
-Preferred language:
+Failure handling: a missing record returns `RECORD_NOT_FOUND`, a non-image or
+failing delivery returns `ARTIFACT_FAILED`, and the UI shows an artifact error
+instead of an artifact. A successful artifact is never fabricated.
 
-> Signed verification record
+Honest limitations (measured, see the evidence table in `docs/CLOUDINARY.md`):
 
-or:
-
-> Tamper-evident verification artifact
-
-Avoid language implying that the photograph itself has been proven authentic.
+* The delivery URL is signed with the account API secret, which stays on the
+  server. Any change to the transformation invalidates that signature.
+* Cloudinary enforces delivery signatures only for restricted assets. This
+  project's assets use the default public delivery, so the same transformation is
+  also served unsigned — the signature is an integrity marker for the delivered
+  transformation, not access control.
+* The artifact is regenerated from the record on request. It is not an immutable
+  archival copy, and it does not prove the photograph is authentic.
 
 ## QR verification
 

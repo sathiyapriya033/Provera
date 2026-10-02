@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ArtifactPanel from "@/components/verification/artifact-panel";
 import type { VerificationRecord } from "@/lib/verification/record";
 import type { ApiResponse } from "@/types";
 
@@ -231,6 +232,8 @@ export default function RecordPanel({
               Retrieve stored record (JSON)
             </a>
           </div>
+
+          <ArtifactPanel recordId={record.recordId} />
         </div>
       )}
     </section>
