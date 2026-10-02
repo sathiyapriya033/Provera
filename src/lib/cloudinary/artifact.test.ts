@@ -3,6 +3,7 @@ import http from "node:http";
 import { describe, test } from "node:test";
 import {
   ARTIFACT_CANVAS,
+  ARTIFACT_QR,
   ARTIFACT_SIGNATURE_NOTE,
   ARTIFACT_STATUS_COLORS,
   ARTIFACT_VERSION,
@@ -214,6 +215,55 @@ describe("delivery URL parsing", () => {
   });
 });
 
+describe("QR overlay", () => {
+  const QR_INPUT = {
+    ...INPUT,
+    qrPublicId: "provera/qr-PV-2026-UHX84W57",
+  };
+
+  test("adds exactly one QR component before the delivery segment", () => {
+    const withoutQr = build();
+    const withQr = build(QR_INPUT);
+    assert.equal(withoutQr.layers.length, 9);
+    assert.equal(withQr.layers.length, 10);
+    assert.equal(withQr.hasQr, true);
+    assert.equal(withoutQr.hasQr, false);
+
+    const qrLayer = withQr.layers[withQr.layers.length - 2];
+    assert.match(qrLayer.purpose, /^QR code to the record's verification page/);
+    assert.match(qrLayer.parameters, /^b_rgb:0f172a,c_fit,g_south_west/);
+    assert.ok(qrLayer.parameters.includes("l_provera:qr-PV-2026-UHX84W57"));
+    assert.ok(qrLayer.parameters.includes(`w_${ARTIFACT_QR.size}`));
+    assert.ok(qrLayer.parameters.includes(`x_${ARTIFACT_QR.x}`));
+    // Optimized delivery stays last in both variants.
+    assert.equal(withQr.layers[withQr.layers.length - 1].parameters, "f_auto,q_auto");
+  });
+
+  test("the QR reference stays inside a single URL path segment", () => {
+    const { components } = parseArtifactUrl(build(QR_INPUT).url, INPUT.publicId);
+    assert.equal(components.length, 10);
+    for (const component of components) {
+      assert.equal(component.includes("/"), false, `unexpected slash in ${component}`);
+    }
+  });
+
+  test("adding the QR changes the URL and the signature", () => {
+    const withoutQr = build();
+    const withQr = build(QR_INPUT);
+    assert.notEqual(withQr.url, withoutQr.url);
+    assert.notEqual(withQr.signature, withoutQr.signature);
+    // Deterministic for the same record.
+    assert.equal(build(QR_INPUT).url, withQr.url);
+  });
+
+  test("a different QR asset yields a different artifact", () => {
+    assert.notEqual(
+      build({ ...QR_INPUT, qrPublicId: "provera/qr-PV-2026-OTHERID" }).url,
+      build(QR_INPUT).url,
+    );
+  });
+});
+
 describe("record mapping and timestamps", () => {
   const record = {
     recordId: "PV-2026-UHX84W57",
@@ -231,22 +281,26 @@ describe("record mapping and timestamps", () => {
   } as unknown as VerificationRecord;
 
   test("maps a stored record to artifact inputs", () => {
-    const input = artifactInputFromRecord(record, "http://localhost:3000");
+    const input = artifactInputFromRecord(record, {
+      verificationUrl: "http://localhost:3000/verify/PV-2026-UHX84W57",
+    });
     assert.equal(input.publicId, record.asset.publicId);
     assert.equal(input.status, "REVIEW");
     assert.equal(input.score, 75);
     assert.equal(input.recordHash, RECORD_HASH);
     assert.equal(
       input.verificationUrl,
-      "http://localhost:3000/api/verify/PV-2026-UHX84W57",
+      "http://localhost:3000/verify/PV-2026-UHX84W57",
     );
+    assert.equal(input.qrPublicId, undefined);
   });
 
-  test("normalizes a trailing slash in the application URL", () => {
-    assert.equal(
-      artifactInputFromRecord(record, "https://provera.example/").verificationUrl,
-      "https://provera.example/api/verify/PV-2026-UHX84W57",
-    );
+  test("carries the QR public ID when one is supplied", () => {
+    const input = artifactInputFromRecord(record, {
+      verificationUrl: "http://localhost:3000/verify/PV-2026-UHX84W57",
+      qrPublicId: "provera/qr-PV-2026-UHX84W57",
+    });
+    assert.equal(input.qrPublicId, "provera/qr-PV-2026-UHX84W57");
   });
 
   test("trims sub-second precision from the artifact timestamp", () => {

@@ -61,14 +61,14 @@ type AnalysisSignals = {
 
 Provider-specific response shapes should be converted into this type at the Cloudinary adapter boundary.
 
-## Artifact transformation (Phase 5 — implemented)
+## Artifact transformation (Phases 5–6 — implemented)
 
 `src/lib/cloudinary/artifact.ts` builds a dynamic transformation of the verified
 asset per request; nothing is stored by Provera — Cloudinary generates and caches
 the derived image. The layout is fixed (artifact version `provera-artifact@1`), so
 the same record always produces the same URL and therefore the same signature.
 
-Nine transformation components are chained in this order:
+Ten transformation components are chained in this order:
 
 1. `w_1200,h_1200,c_pad,b_rgb:0f172a` — fixed dark canvas with the source
    letterboxed, so the layout never depends on the photo's aspect ratio.
@@ -78,13 +78,49 @@ Nine transformation components are chained in this order:
    hang from the top of the canvas and south-anchored layers from the bottom;
    each layer also carries `b_rgb:0f172a` so text stays legible whatever the
    photograph's brightness.
-9. `f_auto,q_auto` — automatic format and quality.
+9. `l_provera:qr-<recordId>,w_260,h_260,c_fit,g_south_west,x_40,y_40` — the
+   verification QR, bottom-left of the canvas. The overlay's public ID contains no
+   slashes after `provera/`, so the layer stays a single URL path segment; a
+   slashed public ID here would be escaped and break the transformation. Verified
+   against this account: the `south_west` gravity with explicit `x`/`y` offsets
+   places the code at the bottom-left corner regardless of source aspect ratio.
+10. `f_auto,q_auto` — automatic format and quality.
 
 The artifact contains what a record holds: status, Forensic Consistency Score,
-record ID, short hash, engine version, timestamp and the verification destination.
-The QR code of Phase 6 will be added as one more layer. The full record hash is
-deliberately never printed on the artifact, so a truncated hash cannot be
-mistaken for it.
+record ID, short hash, engine version, timestamp, the verification destination and
+the QR code to the verification page. The full record hash is deliberately never
+printed on the artifact, so a truncated hash cannot be mistaken for it.
+
+## QR code as a Cloudinary asset (Phase 6 — implemented)
+
+The QR is generated in application code (`src/lib/qr/qr.ts`, no image dependency,
+deterministic 8-bit grayscale PNG) and uploaded as an image asset by
+`src/lib/cloudinary/qr.ts`:
+
+| Property | Value |
+|---|---|
+| Public ID | `provera/qr-<recordId>` (deterministic, `overwrite: true`) |
+| Resource type / delivery | `image` / `upload` (public) |
+| Tags | `provera`, `verification-qr` |
+| Context | `record_id=<recordId>\|destination=<url>` |
+| Overlay | `l_provera:qr-<recordId>,w_260,h_260,c_fit,g_south_west,x_40,y_40` |
+
+Measured for the reference record: 328×328 px PNG, 33×33 modules, 4-module quiet
+zone; the delivered artifact containing the overlay is 162 282 B as JPEG and
+132 990 B as WebP. Decoding the QR back out of the *delivered* artifact with an
+independent decoder (jsQR) returns exactly `{appUrl}/verify/{recordId}`.
+
+A Cloudinary-hosted layer is required, not a stylistic choice: Cloudinary fetches
+overlay images while rendering, so a QR served only by a laptop cannot be
+composited. Because the public ID is derived from the record ID, re-running the
+request replaces the same asset instead of accumulating copies, and the artifact
+URL — and therefore its delivery signature — stays stable for a record.
+
+Upload errors are not swallowed: `ensureQrAsset()` raises `QrAssetError` with the
+API secret redacted, and `GET /api/artifact/:recordId` reports it as
+`ARTIFACT_FAILED`. A QR that failed to store is never shown as a working code, and
+an artifact is never reported as generated unless the delivery probe confirmed it
+renders.
 
 ## Signed delivery — what was actually verified
 

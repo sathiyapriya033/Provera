@@ -115,7 +115,7 @@ Returns the stored verification record and an integrity check.
 
 ## GET `/api/artifact/:recordId`
 
-Returns the signed Cloudinary verification artifact for a stored record (Phase 5). The artifact is generated on demand from the record and is not stored by the application.
+Returns the signed Cloudinary verification artifact for a stored record (Phase 5), including the record's verification QR code (Phase 6). The artifact is generated on demand from the record and is not stored by the application.
 
 ```json
 {
@@ -133,32 +133,57 @@ Returns the signed Cloudinary verification artifact for a stored record (Phase 5
       "layers": [{ "purpose": "Canvas 1200x1200, letterboxed…", "parameters": "b_rgb:0f172a,c_pad,h_1200,w_1200" }],
       "canvas": { "width": 1200, "height": 1200 },
       "optimization": { "fetchFormat": "auto", "quality": "auto" },
-      "verificationUrl": "http://localhost:3000/api/verify/PV-2026-XXXXXXXX"
+      "verificationUrl": "https://<app>/verify/PV-2026-XXXXXXXX",
+      "hasQr": true
     },
     "delivery": {
       "verified": true,
       "status": 200,
       "contentType": "image/jpeg",
-      "contentLength": 149679,
-      "negotiated": [{ "accept": "image/webp", "contentType": "image/webp", "contentLength": 104000 }]
+      "contentLength": 162282,
+      "negotiated": [{ "accept": "image/webp", "contentType": "image/webp", "contentLength": 132990 }]
+    },
+    "qr": {
+      "publicId": "provera/qr-PV-2026-XXXXXXXX",
+      "url": "https://res.cloudinary.com/<cloud>/image/upload/v1/provera/qr-PV-2026-XXXXXXXX.png",
+      "version": 1790937394,
+      "destination": "https://<app>/verify/PV-2026-XXXXXXXX",
+      "size": 328,
+      "moduleCount": 33
     },
     "signatureNote": "Signed with the Cloudinary account API secret…"
   }
 }
 ```
 
-`layers` are the transformation components in delivery order, for inspection. `delivery` is the result of a `HEAD` request against the signed URL: an artifact is only reported as generated when that response is HTTP 2xx with an `image/*` content type, and `negotiated` shows what `f_auto` returns when WebP is acceptable.
+`layers` are the transformation components in delivery order, for inspection — ten of them with a QR, nine without. `delivery` is the result of a `HEAD` request against the signed URL: an artifact is only reported as generated when that response is HTTP 2xx with an `image/*` content type, and `negotiated` shows what `f_auto` returns when WebP is acceptable.
+
+`qr` describes the Cloudinary-hosted QR image that is composited onto the artifact. The server generates the QR, uploads it, then builds and verifies the artifact in the same request, so the three cannot disagree. `qr` is typed `null` for inputs built without a QR public ID; the API always supplies one.
 
 ### Errors
 
 - `INVALID_INPUT` (400) — malformed record ID.
 - `RECORD_NOT_FOUND` (404) — no stored record with that ID.
-- `ARTIFACT_FAILED` (502) — Cloudinary delivery did not return a usable image, or the CDN could not be reached.
+- `ARTIFACT_FAILED` (502) — the QR image could not be stored, Cloudinary delivery did not return a usable image, or the CDN could not be reached.
 - `INTERNAL_ERROR` (500) — Cloudinary credentials are not configured.
 
 ### Security
 
 `CLOUDINARY_API_SECRET` stays on the server; only the derived signed URL is returned. The signature is computed server-side and never lets the secret reach the client. Cloudinary enforces delivery signatures only for restricted assets — for these publicly delivered uploads the signature is an integrity marker for the requested transformation, not access control (verified in `docs/CLOUDINARY.md`).
+
+The QR asset is public (`type: "upload"`), like the source asset. It contains a URL and nothing else: no score, verdict, hash or credential.
+
+## GET `/verify/:recordId`
+
+The public HTML verification page — the destination of the artifact's QR code (Phase 6). No login, no API key, no JSON. It reads the stored record, recomputes the record hash, and renders status, score, timestamp, engine version, signal breakdown, coverage, reasons, flags, the record hash with its verification result, and the submitted claim.
+
+| Input | Rendered state | HTTP status |
+|---|---|---|
+| Known record | The recorded assessment | 200 |
+| ID not matching `PV-YYYY-XXXXXXXX` | "Invalid record ID" explanation | 200 |
+| Well-formed but unknown ID | `not-found.tsx`, "Record not found" (`noindex`) | 200\* |
+
+\* The route is `force-dynamic` and streamed, so `notFound()` replaces the rendered body; the status line may still be 200. The two error states are distinguished by the page content, not by the status code, and a missing record is never reported as a passed or failed verification.
 
 ## GET `/api/assets`
 

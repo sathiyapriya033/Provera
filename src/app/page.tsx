@@ -22,8 +22,8 @@ const WORKFLOW_STEPS = [
   {
     title: "Verification record & QR",
     description:
-      "A signed verification artifact with an integrity hash and a QR code linking to the verification page.",
-    state: "Coming soon",
+      "A signed Cloudinary artifact with an integrity hash and a QR code linking to the public verification page (live).",
+    state: "Record + artifact + QR live",
   },
 ] as const;
 

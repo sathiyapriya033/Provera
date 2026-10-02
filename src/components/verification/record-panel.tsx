@@ -225,6 +225,14 @@ export default function RecordPanel({
             <span>Metadata field prefix: provera_*</span>
             <a
               className="font-medium text-slate-700 underline hover:text-slate-900"
+              href={`/verify/${record.recordId}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open public verification page
+            </a>
+            <a
+              className="font-medium text-slate-700 underline hover:text-slate-900"
               href={`/api/verify/${record.recordId}`}
               target="_blank"
               rel="noreferrer"

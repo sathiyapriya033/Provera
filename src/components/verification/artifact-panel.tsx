@@ -6,6 +6,7 @@ import type {
   ArtifactDelivery,
   VerificationArtifact,
 } from "@/lib/cloudinary/artifact";
+import type { QrAsset } from "@/lib/cloudinary/qr";
 import type { ApiResponse } from "@/types";
 
 type ArtifactPhase = "idle" | "running" | "done" | "error";
@@ -13,6 +14,7 @@ type ArtifactPhase = "idle" | "running" | "done" | "error";
 type ArtifactPayload = {
   artifact: VerificationArtifact;
   delivery: ArtifactDelivery;
+  qr: QrAsset | null;
   signatureNote: string;
 };
 
@@ -103,14 +105,48 @@ export default function ArtifactPanel({ recordId }: { recordId: string }) {
 
       {phase === "done" && artifact && delivery && (
         <div className="mt-4 space-y-4">
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-900">
-            <Image
-              src={artifact.url}
-              alt={`Provera verification artifact for record ${artifact.recordId}`}
-              width={artifact.canvas.width}
-              height={artifact.canvas.height}
-              className="h-auto w-full"
-            />
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,20rem)_1fr]">
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-900">
+              <Image
+                src={artifact.url}
+                alt={`Provera verification artifact for record ${artifact.recordId}`}
+                width={artifact.canvas.width}
+                height={artifact.canvas.height}
+                className="h-auto w-full"
+              />
+            </div>
+            {payload?.qr && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Scan to verify
+                </p>
+                <div className="mx-auto mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white">
+                  <Image
+                    src={payload.qr.url}
+                    alt={`QR code to the verification page for record ${artifact.recordId}`}
+                    width={payload.qr.size}
+                    height={payload.qr.size}
+                    className="h-auto w-full"
+                  />
+                </div>
+                <p className="mt-2 break-all font-mono text-[11px] text-slate-600">
+                  {payload.qr.destination}
+                </p>
+                <a
+                  className="mt-2 inline-block text-xs font-medium text-slate-700 underline hover:text-slate-900"
+                  href={payload.qr.destination}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open the public verification page
+                </a>
+                <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                  The QR is printed on the artifact above and points to this
+                  record&apos;s public page. It works only for the application URL
+                  configured on this deployment.
+                </p>
+              </div>
+            )}
           </div>
 
           <dl className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">

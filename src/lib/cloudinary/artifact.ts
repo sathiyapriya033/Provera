@@ -30,6 +30,9 @@ export const ARTIFACT_VERSION = "provera-artifact@1";
 /** Fixed artifact canvas (letterboxes the source image on a dark background). */
 export const ARTIFACT_CANVAS = { width: 1200, height: 1200 } as const;
 
+/** QR overlay geometry on the artifact (bottom-left, clear of the text block). */
+export const ARTIFACT_QR = { size: 260, x: 40, y: 40 } as const;
+
 /** Canvas/overlay palette. Dark enough that every text layer stays legible. */
 const ARTIFACT_BACKGROUND = "#0f172a";
 
@@ -63,6 +66,11 @@ export type ArtifactInput = {
   timestamp: string;
   /** Absolute URL a third party can open to retrieve the record. */
   verificationUrl: string;
+  /**
+   * Cloudinary public ID of the QR image to composite onto the artifact. When
+   * absent the artifact is rendered without a QR code.
+   */
+  qrPublicId?: string;
 };
 
 /** One transformation component, in the order it appears in the URL. */
@@ -91,6 +99,8 @@ export type VerificationArtifact = {
   canvas: { width: number; height: number };
   optimization: { fetchFormat: "auto"; quality: "auto" };
   verificationUrl: string;
+  /** True when the artifact composites a QR code to the verification page. */
+  hasQr: boolean;
 };
 
 export type ArtifactDelivery = {
@@ -204,9 +214,8 @@ export function formatArtifactTimestamp(timestamp: string): string {
 /** Pure mapping from a stored record to the artifact's rendering inputs. */
 export function artifactInputFromRecord(
   record: VerificationRecord,
-  appUrl: string,
+  options: { verificationUrl: string; qrPublicId?: string },
 ): ArtifactInput {
-  const base = appUrl.trim().replace(/\/+$/, "");
   return {
     publicId: record.asset.publicId,
     resourceType: record.asset.resourceType,
@@ -216,21 +225,25 @@ export function artifactInputFromRecord(
     recordHash: record.recordHash,
     engineVersion: record.engineVersion,
     timestamp: record.timestamp,
-    // Phase 6 replaces this with the human-facing /verify/[recordId] page; the
-    // record-retrieval endpoint works today and needs no login.
-    verificationUrl: `${base}/api/verify/${record.recordId}`,
+    verificationUrl: options.verificationUrl,
+    ...(options.qrPublicId ? { qrPublicId: options.qrPublicId } : {}),
   };
 }
 
 /**
  * Transformation components in delivery order. The first entry describes the
- * canvas, the text layers follow in layout order, and the last entry is the
- * optimized-delivery segment.
+ * canvas, the text layers follow in layout order, the QR overlay is inserted when
+ * a QR asset is supplied, and the last entry is the optimized-delivery segment.
  */
-function artifactPurposes(): string[] {
+function artifactPurposes(withQr: boolean): string[] {
   return [
     `Canvas ${ARTIFACT_CANVAS.width}x${ARTIFACT_CANVAS.height}, letterboxed on the artifact background`,
     ...TEXT_LAYERS.map((layer) => layer.purpose),
+    ...(withQr
+      ? [
+          `QR code to the record's verification page (${ARTIFACT_QR.size}px, bottom-left)`,
+        ]
+      : []),
     "Optimized delivery (f_auto format, q_auto quality)",
   ];
 }
@@ -259,6 +272,24 @@ function buildTransformation(input: ArtifactInput) {
       gravity: layer.gravity,
       y: layer.y,
     })),
+    ...(input.qrPublicId
+      ? [
+          {
+            overlay: {
+              resource_type: "image",
+              type: "upload",
+              public_id: input.qrPublicId,
+            },
+            width: ARTIFACT_QR.size,
+            height: ARTIFACT_QR.size,
+            crop: "fit",
+            gravity: "south_west",
+            x: ARTIFACT_QR.x,
+            y: ARTIFACT_QR.y,
+            background: ARTIFACT_BACKGROUND,
+          },
+        ]
+      : []),
     { fetch_format: "auto", quality: "auto" },
   ];
 }
@@ -331,7 +362,7 @@ export function buildVerificationArtifact(
   });
 
   const { signature, components } = parseArtifactUrl(url, input.publicId);
-  const purposes = artifactPurposes();
+  const purposes = artifactPurposes(Boolean(input.qrPublicId));
 
   return {
     artifactVersion: ARTIFACT_VERSION,
@@ -349,6 +380,7 @@ export function buildVerificationArtifact(
     canvas: { ...ARTIFACT_CANVAS },
     optimization: { fetchFormat: "auto", quality: "auto" },
     verificationUrl: input.verificationUrl,
+    hasQr: Boolean(input.qrPublicId),
   };
 }
 

@@ -59,6 +59,7 @@ Recommended stack from the final specification:
 - `@cloudinary/url-gen`
 - Next.js Server Actions / API Routes
 - Node.js `crypto` for application-level record hashing
+- `qrcode-generator` for QR encoding, and `jsqr` (dev-only) to decode the result in tests
 
 Create `.env.local` from `.env.example` and never commit secrets.
 
@@ -83,6 +84,17 @@ Exact hash procedure, persistence limitations and endpoint details: [Verificatio
 - The delivery URL is signed server-side (`sign_url: true`); `CLOUDINARY_API_SECRET` never leaves the server, and the artifact URL and every transformation component are returned for inspection.
 - Cloudinary enforces delivery signatures only for restricted assets. These assets use the default public delivery, so the signature authenticates the *requested transformation* — any edit to it invalidates the signature — but it is not access control. Measured evidence is in [Cloudinary Integration](docs/CLOUDINARY.md).
 - An artifact is tamper-evident evidence of what was recorded and assessed at that moment. It is not proof that the photograph is authentic, and it is not immutable.
+
+## QR code and public verification page (Phase 6 — implemented)
+
+Every artifact carries a QR code, printed bottom-left, that resolves to `{NEXT_PUBLIC_APP_URL}/verify/{recordId}` — a public page anyone can open with no login and no API key.
+
+- The QR is generated in application code (`src/lib/qr/qr.ts`) as a deterministic grayscale PNG with no image dependency, then uploaded to Cloudinary as `provera/qr-<recordId>` so the CDN can composite it. Re-running a request replaces the same asset, keeping the artifact URL and its signature stable.
+- Correctness is tested, not assumed: `src/lib/qr/qr.test.ts` decodes the generated PNG with an independent decoder (jsQR) and asserts it resolves to the exact destination URL.
+- The code encodes a URL and nothing else — no score, verdict or hash — so the page is the only source of those values.
+- The page shows the recorded assessment in full (status, score, signal breakdown with the underlying measurements, coverage, reasons, flags, timestamp, engine version) and recomputes the record hash so a reader can see whether the record still matches itself. It never states that the photograph is authentic.
+- Malformed IDs and unknown-but-valid IDs get their own honest states; a missing record is never reported as a passed or failed verification.
+- The QR only resolves for the configured application URL: if the deployment moves, previously printed artifacts point at the old host.
 
 ## Build order
 

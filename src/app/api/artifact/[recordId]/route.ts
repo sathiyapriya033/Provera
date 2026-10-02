@@ -9,22 +9,30 @@ import {
   type VerificationArtifact,
 } from "@/lib/cloudinary/artifact";
 import { CloudinaryConfigError, getCloudinaryConfig } from "@/lib/cloudinary/config";
+import { QrAssetError, ensureQrAsset, type QrAsset } from "@/lib/cloudinary/qr";
+import { verificationPageUrl } from "@/lib/qr/qr";
 import { RECORD_ID_PATTERN } from "@/lib/verification/record";
 import { VerificationStoreError, getRecord } from "@/lib/verification/store";
 import type { ApiErrorCode, ApiResponse } from "@/types";
 
 /**
- * GET /api/artifact/:recordId — signed Cloudinary verification artifact (Phase 5).
+ * GET /api/artifact/:recordId — signed Cloudinary verification artifact (Phase 5)
+ * with the record's verification QR code (Phase 6).
  *
  * Builds a dynamic transformation of the verified asset from the stored record,
  * signs it with the account API secret, and then confirms with a HEAD request
  * that Cloudinary really serves an image. A failed or non-image response is
  * reported as ARTIFACT_FAILED; a successful artifact is never fabricated.
+ *
+ * The QR code encodes {appUrl}/verify/{recordId} and is stored as a Cloudinary
+ * image asset first, because Cloudinary has to be able to fetch a remote layer
+ * while rendering the artifact.
  */
 
 type ArtifactPayload = {
   artifact: VerificationArtifact;
   delivery: ArtifactDelivery;
+  qr: QrAsset | null;
   signatureNote: string;
 };
 
@@ -58,16 +66,27 @@ export async function GET(
 
   try {
     const record = await getRecord(recordId);
+    const credentials = getCloudinaryConfig();
+    const destination = verificationPageUrl(getAppUrl(), record.recordId);
+    const qr = await ensureQrAsset({
+      recordId: record.recordId,
+      destination,
+      ...credentials,
+    });
+
     const artifact = buildVerificationArtifact(
-      artifactInputFromRecord(record, getAppUrl()),
-      getCloudinaryConfig(),
+      artifactInputFromRecord(record, {
+        verificationUrl: destination,
+        qrPublicId: qr.publicId,
+      }),
+      credentials,
     );
     const delivery = await probeArtifactDelivery(artifact.url);
 
     return NextResponse.json(
       {
         ok: true,
-        data: { artifact, delivery, signatureNote: ARTIFACT_SIGNATURE_NOTE },
+        data: { artifact, delivery, qr, signatureNote: ARTIFACT_SIGNATURE_NOTE },
       } satisfies ApiResponse<ArtifactPayload>,
       { status: 200 },
     );
@@ -75,7 +94,7 @@ export async function GET(
     if (error instanceof CloudinaryConfigError) {
       return errorResponse("INTERNAL_ERROR", error.message, 500);
     }
-    if (error instanceof ArtifactError) {
+    if (error instanceof ArtifactError || error instanceof QrAssetError) {
       return errorResponse("ARTIFACT_FAILED", error.message, 502);
     }
     if (error instanceof VerificationStoreError) {
