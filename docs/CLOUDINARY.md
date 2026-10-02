@@ -161,18 +161,103 @@ issues a `HEAD` request against it. Only an HTTP 2xx `image/*` response is
 reported as a generated artifact; anything else returns `ARTIFACT_FAILED` and no
 artifact is shown.
 
-## Inspector Mode
+## Inspector Mode (Phase 7 — implemented)
 
-Inspector Mode should expose:
+`/inspector?recordId=<id>` shows the live Cloudinary state of a verified asset next
+to the record that describes it, so the integration can be checked without trusting
+the application's own summary. The data is read on every request through
+`collectInspection()`; the report is assembled by the pure
+`buildInspectionReport()` in `src/lib/inspection/inspect.ts`. The same report is
+available as JSON at `GET /api/inspector/:recordId`.
 
-- Cloudinary public ID
-- upload result
-- analysis summary
-- structured metadata payload
-- transformation parameters
-- signed delivery URL
-- `f_auto` / `q_auto`
-- verification record ID
+Sections, each corresponding to a field read from this account rather than assumed:
+
+1. **Asset identity: record vs live** — `public_id`, `resource_type`, `format`,
+   `version` and `secure_url` as captured at verification time, against what
+   Cloudinary returns now. A `version` difference means the file at that public ID
+   was replaced after verification; the report says so explicitly rather than
+   showing a quiet mismatch. Fields the record never stored are marked
+   `not_compared`, never counted as agreement.
+2. **Live Cloudinary asset** — `asset_id`, dimensions, `bytes`, `created_at`,
+   `last_updated`, `secure_url`, perceptual hash (`phash`), EXIF field count,
+   image metadata keys, tags, context, predominant colours and the Admin API
+   rate-limit counters.
+3. **Structured metadata** — the seven `provera_*` fields, each compared with the
+   value the record implies and labelled `match`, `mismatch` or `missing`.
+4. **Recorded analysis signals** — the normalized signal values stored in the
+   record, with `coverage` and the analysis ID. A `null` signal is shown as
+   *unavailable*, never as a zero.
+5. **Artifact transformation** — the rendered artifact, the signed delivery URL,
+   the signature, all ten transformation components with their parameters, and the
+   `f_auto` / `q_auto` optimization pair with the measured delivery response.
+6. **Verification QR** — the overlay source asset, its public ID, module count,
+   destination and its live Cloudinary state.
+7. **Derivatives Cloudinary generated** — cached derived images whose
+   transformation carries this record's ID in a text layer, with Cloudinary's own
+   `transformation_signature`. This is the account's own record that the
+   transformation really executed; it is not something Provera asserts.
+
+### Admin API call used
+
+```ts
+cloudinary.api.resource(publicId, {
+  resource_type: "image",
+  type: "upload",
+  metadata: true,
+  context: true,
+  tags: true,
+  colors: true,
+  exif: true,
+  phash: true,
+});
+```
+
+Measured against this account (the fields the report depends on):
+
+| Field | Observed |
+|---|---|
+| `metadata` | all seven `provera_*` values, with `provera_score` as a **number** |
+| `context` | `{ custom: { … } }`; `undefined` when the asset has no context |
+| `tags` | array of strings; `undefined` when the asset has no tags |
+| `phash` | present (`c9635a63eacf11c1` for the reference asset) |
+| `predominant.google` | `[[name, percent], …]` |
+| `derived[]` | `transformation`, `transformation_signature`, `format`, `bytes`, `secure_url` |
+| `last_updated` | `{ updated_at, metadata_updated_at }` |
+| `access_mode` | **not reported** by this endpoint, even with `access_mode: true` |
+| `rate_limit_allowed` / `rate_limit_remaining` | 500 / 499 on a read |
+| missing asset | rejects with `{ error: { message, http_code: 404 } }` |
+
+`access_mode` is not reported for this account, so the UI prints "not reported by
+this API" rather than asserting the asset is public. `tags` and `context` are
+genuinely absent on the uploaded source asset; the report shows "none set" instead
+of an empty table, and the QR asset — which does carry both — proves the read works.
+
+Metadata comparison is by string form, so `provera_score: 75` matches whether
+Cloudinary returns `75` or `"75"`. This was verified live by writing `99` to
+`provera_score` on the asset: the report immediately showed `mismatch` for that
+field and `matches: false`, and returned to a clean 7/7 after the original value
+was written back.
+
+Two states cannot be produced through the SDK on this account and are therefore
+covered by unit tests rather than by a live check: writing a `provera_*` field that
+does not exist is rejected with `The following metadata fields do not exist`, and
+clearing a field with a `null` value is rejected by `uploader.update_metadata`. A
+structured field can only be unset in the Media Library, which is exactly the case
+the `missing` state exists for.
+
+Honest limits of the view:
+
+* The live read is a snapshot taken now. It is **not** the analysis that produced
+  the record — `analysisId` is an application-generated UUID, so the original
+  analysis cannot be re-read from Cloudinary, and re-running the analysis would
+  produce a different result at a different time. The report says this in its
+  `scope` field and the page prints it above the sections.
+* A matching metadata set means the asset still carries the record's summary. It
+  is not proof that the photograph is authentic, and it does not detect a
+  replacement made *and* the metadata rewritten to match.
+* Every section degrades on its own: an unreadable asset, a failed QR upload or a
+  failed artifact delivery is reported as unavailable with its reason, and the
+  rest of the report still renders. Nothing is fabricated to fill a gap.
 
 ## Cloudinary adapter rule
 

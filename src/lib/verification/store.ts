@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { RECORD_ID_PATTERN, createRecordId, type VerificationRecord } from "./record";
 
@@ -130,3 +130,70 @@ export async function getRecord(recordId: string): Promise<VerificationRecord> {
     );
   }
 }
+
+/** One entry in the Inspector Mode record picker. */
+export type RecordSummary = {
+  recordId: string;
+  publicId: string;
+  status: VerificationRecord["status"];
+  score: number;
+  timestamp: string;
+  context: string | null;
+};
+
+/** Default number of records offered by the Inspector Mode picker. */
+export const DEFAULT_RECENT_LIMIT = 10;
+
+/**
+ * Lists the most recent records, newest first, for the Inspector Mode picker.
+ *
+ * File names are validated against `RECORD_ID_PATTERN` before being joined to the
+ * records directory, so a stray file name can never escape it. Files that cannot
+ * be read or parsed are skipped instead of failing the whole listing: one corrupt
+ * record must not hide the rest. Records are read one directory level only.
+ */
+export async function listRecentRecords(
+  limit: number = DEFAULT_RECENT_LIMIT,
+): Promise<RecordSummary[]> {
+  const cap = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 50) : DEFAULT_RECENT_LIMIT;
+
+  let names: string[];
+  try {
+    names = await readdir(RECORDS_DIR);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw new VerificationStoreError(
+      "PERSISTENCE_FAILED",
+      `Could not list the record store: ${(error as Error).message}`,
+    );
+  }
+
+  const ids = names
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => name.slice(0, -".json".length))
+    .filter((id) => RECORD_ID_PATTERN.test(id));
+
+  const summaries: RecordSummary[] = [];
+  for (const id of ids) {
+    try {
+      const raw = await readFile(recordPath(id), "utf8");
+      const record = JSON.parse(raw) as VerificationRecord;
+      if (typeof record?.recordId !== "string") continue;
+      summaries.push({
+        recordId: record.recordId,
+        publicId: record.asset?.publicId ?? "unknown",
+        status: record.status,
+        score: record.score,
+        timestamp: record.timestamp,
+        context: record.context,
+      });
+    } catch {
+      // A single unreadable record must not hide the others.
+    }
+  }
+
+  return summaries
+    .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
+    .slice(0, cap);
+}
+

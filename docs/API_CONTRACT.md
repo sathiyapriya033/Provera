@@ -185,6 +185,61 @@ The public HTML verification page — the destination of the artifact's QR code 
 
 \* The route is `force-dynamic` and streamed, so `notFound()` replaces the rendered body; the status line may still be 200. The two error states are distinguished by the page content, not by the status code, and a missing record is never reported as a passed or failed verification.
 
+## GET `/api/inspector/:recordId`
+
+The Inspector Mode report (Phase 7) as JSON — the machine-readable twin of the `/inspector` page. Everything in it is read from Cloudinary during the request.
+
+```json
+{
+  "ok": true,
+  "data": {
+    "inspectionVersion": "provera-inspection@1",
+    "generatedAt": "2026-10-02T09:00:00.000Z",
+    "record": { "recordId": "PV-2026-XXXXXXXX", "score": 75, "status": "REVIEW", "integrityVerified": true, "…": "…" },
+    "asset": {
+      "recorded": { "publicId": "provera/example", "version": 1790875061, "…": "…" },
+      "identity": {
+        "outcome": "consistent",
+        "mismatched": [],
+        "notes": [],
+        "checks": [{ "field": "version", "recorded": "1790875061", "live": "1790875061", "state": "match" }]
+      },
+      "live": {
+        "available": true,
+        "fields": { "assetId": "043a…", "phash": "c9635a63eacf11c1", "accessMode": null, "…": "…" }
+      }
+    },
+    "metadata": {
+      "fields": [{ "field": "provera_score", "expected": 75, "live": "75", "state": "match" }],
+      "extraLiveFields": [],
+      "matchCount": 7, "mismatchCount": 0, "missingCount": 0, "matches": true
+    },
+    "qr": { "asset": { "publicId": "provera/qr-PV-2026-XXXXXXXX", "…": "…" }, "failure": null, "live": { "available": true, "bytes": 940 } },
+    "artifact": { "status": "verified", "artifact": { "url": "https://…", "layers": [], "…": "…" }, "delivery": { "verified": true, "status": 200 } },
+    "derivatives": { "matching": 10, "total": 10, "entries": [], "truncated": false },
+    "scope": "The live Cloudinary state in this report was read now…"
+  }
+}
+```
+
+Enumerated states, so a client never has to guess what a value means:
+
+- `asset.identity.outcome` — `consistent` | `changed` | `unknown` (`unknown` when the live read failed, so nothing is compared).
+- `asset.identity.checks[].state` — `match` | `mismatch` | `not_compared`.
+- `metadata.fields[].state` — `match` | `mismatch` | `missing`.
+- `asset.live` / `qr.live` — `available: false` carries the reason instead of values.
+- `artifact.status` — `verified` (with `delivery`) | `unavailable` (with `reason`).
+- `qr.failure` — non-null when the QR asset could not be produced.
+
+Comparison is by string form, so a numeric field matches whether the API returns `75` or `"75"`. A section that failed is reported as unavailable with its reason and the rest of the report still returns `200`; only a missing record or missing credentials fail the request. The response never contains `CLOUDINARY_API_SECRET`.
+
+### Errors
+
+- `INVALID_INPUT` (400) — malformed record ID.
+- `RECORD_NOT_FOUND` (404) — no stored record with that ID.
+- `INTERNAL_ERROR` (500) — Cloudinary credentials are not configured, or an unexpected server error.
+
+
 ## GET `/api/assets`
 
 Optional audit-queue endpoint. It should use Cloudinary metadata/search rather than introducing an unnecessary database.

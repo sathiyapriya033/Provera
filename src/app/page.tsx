@@ -2,8 +2,8 @@ import UploadForm from "@/components/upload/upload-form";
 
 const PLACEHOLDER_NAV = [
   { label: "Workflow", href: "/", active: true },
-  { label: "Inspector", href: "#workflow-placeholder", active: false },
-  { label: "Verification", href: "#workflow-placeholder", active: false },
+  { label: "Inspector", href: "/inspector", active: false, soon: false },
+  { label: "Verification", href: "/#workflow-placeholder", active: false, soon: true },
 ] as const;
 
 const WORKFLOW_STEPS = [
@@ -24,6 +24,13 @@ const WORKFLOW_STEPS = [
     description:
       "A signed Cloudinary artifact with an integrity hash and a QR code linking to the public verification page (live).",
     state: "Record + artifact + QR live",
+  },
+  {
+    title: "Inspector Mode",
+    description:
+      "The live Cloudinary account state next to the record: asset identity, structured metadata, transformation, signed URL and derivatives.",
+    state: "Live",
+    href: "/inspector",
   },
 ] as const;
 
@@ -55,7 +62,7 @@ export default function Home() {
                     >
                       {item.label}
                     </a>
-                  ) : (
+                  ) : "soon" in item && item.soon ? (
                     <span
                       aria-disabled="true"
                       title="Coming soon"
@@ -66,6 +73,13 @@ export default function Home() {
                         Soon
                       </span>
                     </span>
+                  ) : (
+                    <a
+                      href={item.href}
+                      className="rounded-md px-3 py-2 font-medium text-slate-700 underline-offset-4 hover:underline"
+                    >
+                      {item.label}
+                    </a>
                   )}
                 </li>
               ))}
@@ -140,7 +154,7 @@ export default function Home() {
               Placeholder — implementation in progress
             </span>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {WORKFLOW_STEPS.map((step, index) => (
               <article
                 key={step.title}
@@ -164,6 +178,14 @@ export default function Home() {
                   aria-hidden="true"
                   className="mt-4 h-9 w-full rounded-md border border-slate-200 bg-white/60"
                 />
+                {"href" in step ? (
+                  <a
+                    href={step.href}
+                    className="mt-3 text-xs font-medium text-slate-700 underline underline-offset-4 hover:text-slate-900"
+                  >
+                    Open Inspector Mode
+                  </a>
+                ) : null}
               </article>
             ))}
           </div>

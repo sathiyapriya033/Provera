@@ -96,6 +96,19 @@ Every artifact carries a QR code, printed bottom-left, that resolves to `{NEXT_P
 - Malformed IDs and unknown-but-valid IDs get their own honest states; a missing record is never reported as a passed or failed verification.
 - The QR only resolves for the configured application URL: if the deployment moves, previously printed artifacts point at the old host.
 
+## Inspector Mode (Phase 7 — implemented)
+
+`/inspector` reads the live Cloudinary account during the request and puts it next to the record, so the integration can be checked without trusting Provera's own summary. Pick a record from the list or paste an ID; the same report is available as JSON at `GET /api/inspector/:recordId`.
+
+- **Asset identity** — the public ID, resource type, format, version and delivery URL the record was created against, against what Cloudinary returns now. A different `version` means the file at that public ID was replaced after verification, and the report says exactly that. Fields the record never stored are marked "not compared", never counted as agreement.
+- **Live asset** — `asset_id`, dimensions, bytes, timestamps, perceptual hash, EXIF, image metadata keys, tags, context, predominant colours and the Admin API rate-limit counters.
+- **Structured metadata** — all seven `provera_*` fields, each labelled match / mismatch / missing. Mismatches are reported, never repaired.
+- **Recorded signals** — the normalized signal values from the record, with a `null` shown as *unavailable* rather than zero.
+- **Artifact** — the rendered image, the signed URL and signature, all ten transformation components with their parameters, and the `f_auto` / `q_auto` pair with the measured delivery response.
+- **Derivatives Cloudinary generated** — cached derived images carrying this record's ID, with Cloudinary's own `transformation_signature`: the account's evidence that the transformation really ran.
+
+The comparison was verified against the live account by writing `99` into `provera_score` on a verified asset: the report immediately showed that field as a mismatch, and returned to a clean 7/7 once the original value was written back. A section that cannot be produced (unreadable asset, failed QR upload, failed artifact delivery) is reported as unavailable with its reason and the rest of the report still renders — nothing is fabricated to fill a gap. Measured Admin API fields and the stated limits are in [Cloudinary Integration](docs/CLOUDINARY.md).
+
 ## Build order
 
 Follow `docs/BUILD_PLAN.md` exactly. Do not ask Cline to build the whole application in one prompt. Complete one phase, test it, review the diff, commit it, then move to the next phase.

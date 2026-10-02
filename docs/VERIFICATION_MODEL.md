@@ -335,3 +335,33 @@ Three states are distinguished, and none of them is a pass or a fail:
 A user scanning the QR should be able to understand exactly what was recorded and
 assessed, without being told that the system proved an absolute truth about the
 original photograph.
+
+## Inspector Mode (Phase 7 — implemented)
+
+The mirror image of the verification page. The verification page answers "what did
+Provera record?"; Inspector Mode answers "does the Cloudinary account still agree
+with that record?".
+
+`/inspector?recordId=<id>` re-reads the asset through the Admin API and compares
+it with the stored record, field by field:
+
+* **Asset identity** — `public_id`, `resource_type`, `format`, `version` and
+  `secure_url`, as captured at verification time against live values. A `version`
+  difference means the file at that public ID was replaced after verification.
+* **Structured metadata** — the seven `provera_*` fields written in Phase 4 against
+  the values the account holds now, each labelled `match`, `mismatch` or `missing`.
+
+This is the one place where drift between the record and the account is visible,
+and it matters for the record's own claims: the metadata mirror is only meaningful
+if something checks it. Provera reports a mismatch and never repairs it, because a
+silent repair would destroy the evidence of the change.
+
+The report deliberately does **not** re-run the analysis and present it as the
+original. `analysisId` is an application-generated UUID, not a Cloudinary analysis
+identifier, so the analysis behind a record cannot be retrieved after the fact;
+re-running it would produce a different result at a different time. The report
+carries a `scope` field stating this, and the page prints it above the sections.
+
+Report assembly (`src/lib/inspection/inspect.ts`) is pure and independently unit
+tested; the Cloudinary calls live in `src/lib/inspection/collect.ts`. Measured
+Admin API behaviour and the full list of limits: [Cloudinary Integration](CLOUDINARY.md).

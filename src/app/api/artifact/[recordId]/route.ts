@@ -10,6 +10,7 @@ import {
 } from "@/lib/cloudinary/artifact";
 import { CloudinaryConfigError, getCloudinaryConfig } from "@/lib/cloudinary/config";
 import { QrAssetError, ensureQrAsset, type QrAsset } from "@/lib/cloudinary/qr";
+import { getAppUrl } from "@/lib/app-url";
 import { verificationPageUrl } from "@/lib/qr/qr";
 import { RECORD_ID_PATTERN } from "@/lib/verification/record";
 import { VerificationStoreError, getRecord } from "@/lib/verification/store";
@@ -42,12 +43,6 @@ function errorResponse(
   status: number,
 ): NextResponse<ApiResponse<never>> {
   return NextResponse.json({ ok: false, error: { code, message } }, { status });
-}
-
-/** Public application URL; falls back to the documented local default. */
-function getAppUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  return configured && configured.length > 0 ? configured : "http://localhost:3000";
 }
 
 export async function GET(
