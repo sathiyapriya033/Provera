@@ -3,6 +3,7 @@ import UploadForm from "@/components/upload/upload-form";
 const PLACEHOLDER_NAV = [
   { label: "Workflow", href: "/", active: true },
   { label: "Inspector", href: "/inspector", active: false, soon: false },
+  { label: "Audit", href: "/audit", active: false, soon: false },
   { label: "Verification", href: "/#workflow-placeholder", active: false, soon: true },
 ] as const;
 
@@ -31,6 +32,15 @@ const WORKFLOW_STEPS = [
       "The live Cloudinary account state next to the record: asset identity, structured metadata, transformation, signed URL and derivatives.",
     state: "Live",
     href: "/inspector",
+    linkLabel: "Open Inspector Mode",
+  },
+  {
+    title: "Audit queue",
+    description:
+      "Search the verifications held in Cloudinary by status and score, read back from the account with no queue database.",
+    state: "Live",
+    href: "/audit",
+    linkLabel: "Open the audit queue",
   },
 ] as const;
 
@@ -183,7 +193,7 @@ export default function Home() {
                     href={step.href}
                     className="mt-3 text-xs font-medium text-slate-700 underline underline-offset-4 hover:text-slate-900"
                   >
-                    Open Inspector Mode
+                    {step.linkLabel}
                   </a>
                 ) : null}
               </article>

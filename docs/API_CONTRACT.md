@@ -242,7 +242,68 @@ Comparison is by string form, so a numeric field matches whether the API returns
 
 ## GET `/api/assets`
 
-Optional audit-queue endpoint. It should use Cloudinary metadata/search rather than introducing an unnecessary database.
+The audit queue (Phase 8), backed by Cloudinary's Search API and the `provera_*` structured metadata on each asset. There is no queue database.
+
+Parameters (all optional, all validated):
+
+| Parameter | Values | Notes |
+|---|---|---|
+| `status` | `VERIFIED`, `REVIEW`, `FLAGGED` | Case-insensitive; matched exactly |
+| `minScore` / `maxScore` | integer `0`–`100` | Inclusive range |
+| `sort` | `newest`, `oldest`, `score_desc`, `score_asc` | Default `newest` |
+| `limit` | `1`–`100` | Default `25` |
+| `cursor` | opaque Cloudinary cursor | Charset- and length-validated before use |
+
+```json
+{
+  "ok": true,
+  "data": {
+    "rows": [
+      {
+        "recordId": "PV-2026-XXXXXXXX",
+        "publicId": "provera/example",
+        "assetId": "043a…",
+        "secureUrl": "https://res.cloudinary.com/<cloud>/image/upload/v1/provera/example.jpg",
+        "format": "jpg",
+        "bytes": 109669,
+        "width": 864,
+        "height": 576,
+        "uploadedAt": "2026-10-01T17:17:41Z",
+        "status": "REVIEW",
+        "score": 75,
+        "recordHash": "fd546eea…",
+        "verifiedAt": "2026-10-01T17:17:52.117Z",
+        "engineVersion": "provera-forensic@1",
+        "flags": ["unavailable:ocrClaim", "unavailable:duplicate"]
+      }
+    ],
+    "scanned": 25,
+    "matched": 1,
+    "withoutRecordMetadata": 24,
+    "cloudinaryTotal": 68,
+    "nextCursor": "fea09406…",
+    "filterAuthority": "application",
+    "sortAuthority": "cloudinary",
+    "pageExhaustedWithoutMatch": false,
+    "rejected": [{ "field": "status", "value": "BOGUS", "reason": "must be one of VERIFIED, REVIEW, FLAGGED" }],
+    "applied": { "status": null, "minScore": 70, "maxScore": null, "sort": "newest", "limit": 25 }
+  }
+}
+```
+
+- `scanned` — assets Cloudinary returned for this page. `matched` — rows that carried Provera metadata and passed the filters. `withoutRecordMetadata` — assets on the page that are not verification records (uploads, QR images), reported rather than silently dropped.
+- `filterAuthority` — `"application"` because this account's Search API cannot index structured metadata, so the status and score filters run in Provera over the metadata Cloudinary returns. `sortAuthority` says whether Cloudinary or Provera ordered the rows.
+- `pageExhaustedWithoutMatch` — `true` when this page had no matches but Cloudinary has more assets. Because filtering happens after retrieval, a later page can contain matches; the UI offers the next page instead of claiming there is nothing.
+- `rejected` — filter values that could not be used, each with a reason. **The request still succeeds** with the remaining filters applied, so a mistyped filter is visible rather than silently dropped. Rejected values never reach the Cloudinary call.
+- Values Cloudinary did not report are `null` (`score`, `width`, `bytes`, …) rather than `0`.
+- The response never contains `CLOUDINARY_API_SECRET`.
+
+### Errors
+
+- `ANALYSIS_FAILED` (502) — Cloudinary's search request failed; the message is the provider's, with the API secret redacted.
+- `INTERNAL_ERROR` (500) — Cloudinary credentials are not configured, or an unexpected server error.
+
+An unusable *filter value* is not an error; only a failed *retrieval* is.
 
 ## POST `/api/metadata`
 

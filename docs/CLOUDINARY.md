@@ -161,6 +161,99 @@ issues a `HEAD` request against it. Only an HTTP 2xx `image/*` response is
 reported as a generated artifact; anything else returns `ARTIFACT_FAILED` and no
 artifact is shown.
 
+## Search API — what this account actually supports (measured)
+
+The audit queue is built on Cloudinary's Search API, so the capabilities were
+measured against this account before anything was written. Every expression below
+was executed; the results are what the queue is designed around.
+
+| Expression | Result |
+|---|---|
+| `resource_type:image` | OK — `total_count`, `resources[]`, `next_cursor` |
+| `resource_type:image AND public_id:provera/…` | OK, exact match |
+| `resource_type:image AND created_at>2026-01-01` | OK — date ranges work |
+| `resource_type:image AND tags=provera` | OK |
+| `resource_type:image AND metadata_provera_status:REVIEW` | **400 "Field 'metadata_provera_status' not supported"** |
+| `… AND metadata_provera_status:"REVIEW"` | same 400 |
+| `… AND metadata_provera_status=REVIEW` | same 400 |
+| `… AND provera_status:REVIEW` (no prefix) | 400 "Field 'provera_status' not supported" |
+| `… AND metadata_provera_score>70` | **400 "Field 'metadata_provera_score' not supported"** |
+| `… AND metadata_provera_score:75` | same 400 |
+| `sort_by("provera_score", "desc")` | **400 "Invalid search field: provera_score"** |
+| `aggregate("total_count")` | **400 "Your subscription plan does not support aggregations"** |
+
+This is a real constraint, not a syntax mistake. The field definitions themselves
+report `"restrictions": { "excluded_from_search": false }`, so the fields are not
+excluded — the account's Search API simply does not index structured metadata.
+Three different expression syntaxes were tried, with and without the
+`metadata_` prefix and with and without quoting, and all were rejected at field
+resolution.
+
+What does work, and is what the queue uses:
+
+```ts
+cloudinary.search
+  .expression("resource_type:image")
+  .sort_by("created_at", "desc" | "asc")
+  .max_results(pageSize)
+  .with_field("metadata")
+  .next_cursor(cursor)   // when paging
+  .execute();
+```
+
+`with_field("metadata")` attaches the full `provera_*` map to each result, which is
+what makes metadata-backed retrieval possible at all. Retrieval, `created_at`
+ordering and pagination are all Cloudinary-side; the status and score filters run
+in Provera over that metadata, and `docs/API_CONTRACT.md` records that split in the
+`filterAuthority` and `sortAuthority` fields of the response.
+
+## Audit queue (Phase 8 — implemented)
+
+`/audit` is the searchable list of verifications. **There is no queue database.**
+Every row is a Cloudinary asset whose `provera_*` structured metadata is read back
+during the request, so the metadata mirror from Phase 4 doubles as the index. If
+an asset is deleted from the account, its row disappears from the queue — which is
+the intended behaviour for an audit view over a media account, and the reason the
+page says a row exists only while the asset does.
+
+The endpoint is `GET /api/assets`, matching the contract. Parameters: `status`,
+`minScore`, `maxScore`, `sort`, `limit`, `cursor`.
+
+* **Status filter** — exact match against `provera_status`.
+* **Score filter** — an inclusive `minScore`/`maxScore` range against
+  `provera_score`.
+* **Recent records** — the default listing is Cloudinary's `created_at desc`, so the
+  queue opens on the newest uploads.
+* **Non-record assets are excluded and counted.** The account also holds uploaded
+  images and QR assets that carry no `provera_record_id`; they are not queue rows,
+  and the result reports how many were skipped rather than quietly dropping them.
+
+Honest behaviour worth stating:
+
+* A record whose `provera_score` is missing cannot satisfy a score filter. It is
+  not treated as `0`, which would silently invent a "0% score" result.
+* A record with no score sorts **last** in both score directions. An unknown score
+  is never presented as the best or the worst result.
+* A `provera_record_id` that does not match `PV-YYYY-XXXXXXXX` means the asset is
+  reported as not-a-record, so a tampered metadata value cannot become a working
+  link in the queue.
+* Because filtering happens after retrieval, **a page can contain no matching rows
+  while a later page contains some.** This was observed live: with `limit=2`, page
+  one matched 0 of 2 and page two matched 1 of 2. The response therefore reports
+  `pageExhaustedWithoutMatch`, and the page offers a next page instead of claiming
+  there is nothing to find.
+* Unusable filter values are returned in `rejected` with a reason and the request
+  still succeeds with the remaining filters applied, so a mistyped filter is
+  visible rather than silently ignored.
+* The queue reports a row as recorded in Cloudinary. Whether that row still agrees
+  with the stored record is a separate question, answered by Inspector Mode.
+
+A known scaling limit: since the metadata filters run after retrieval, the queue
+scans a bounded page (default 25, maximum 100) of the account's images. Tagging
+verified assets at verification time would allow a server-side `tags=` filter and
+remove the scan; that is deliberately left out of this phase, because it would
+change the Phase 4 write path and every record written before it.
+
 ## Inspector Mode (Phase 7 — implemented)
 
 `/inspector?recordId=<id>` shows the live Cloudinary state of a verified asset next

@@ -109,6 +109,18 @@ Every artifact carries a QR code, printed bottom-left, that resolves to `{NEXT_P
 
 The comparison was verified against the live account by writing `99` into `provera_score` on a verified asset: the report immediately showed that field as a mismatch, and returned to a clean 7/7 once the original value was written back. A section that cannot be produced (unreadable asset, failed QR upload, failed artifact delivery) is reported as unavailable with its reason and the rest of the report still renders — nothing is fabricated to fill a gap. Measured Admin API fields and the stated limits are in [Cloudinary Integration](docs/CLOUDINARY.md).
 
+## Audit queue (Phase 8 — implemented)
+
+`/audit` is the searchable list of verifications. **There is no queue database** — every row is a Cloudinary asset whose `provera_*` structured metadata is read back during the request, so the metadata written in Phase 4 doubles as the index. Delete the asset in Cloudinary and the row disappears; the page says a row exists only while the asset does.
+
+- Filter by **status** (`VERIFIED` / `REVIEW` / `FLAGGED`), by **score** (an inclusive min/max range), and **sort** by upload time or score. Paginate through Cloudinary's cursor.
+- The same data is available at `GET /api/assets`.
+- Assets with no `provera_record_id` (uploads and QR images) are not queue rows; the count of skipped assets is reported rather than dropped silently.
+
+Two things the queue deliberately does not do, because doing them quietly would be dishonest: a record with no recorded score cannot satisfy a score filter (it is not treated as `0`), and because the metadata filters run after retrieval, an empty page can still have matches on a later page — so the page offers a next page rather than claiming there is nothing. Unusable filter values are returned with a reason and the request still succeeds, so a typo is visible rather than silently ignored.
+
+Cloudinary's Search API **cannot** filter on these structured metadata fields on this account — every `metadata_*` expression is rejected with *"Field … not supported"* — so retrieval, ordering and paging are Cloudinary-side while the status and score filters run in Provera over the metadata Cloudinary returns. The response says which side did what, and the page states it. Full measured evidence, including three rejected syntax variants, is in [Cloudinary Integration](docs/CLOUDINARY.md).
+
 ## Build order
 
 Follow `docs/BUILD_PLAN.md` exactly. Do not ask Cline to build the whole application in one prompt. Complete one phase, test it, review the diff, commit it, then move to the next phase.

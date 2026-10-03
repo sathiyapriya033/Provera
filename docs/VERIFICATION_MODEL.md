@@ -365,3 +365,41 @@ carries a `scope` field stating this, and the page prints it above the sections.
 Report assembly (`src/lib/inspection/inspect.ts`) is pure and independently unit
 tested; the Cloudinary calls live in `src/lib/inspection/collect.ts`. Measured
 Admin API behaviour and the full list of limits: [Cloudinary Integration](CLOUDINARY.md).
+
+## Audit queue (Phase 8 — implemented)
+
+The third reading of a record. The verification page answers "what did Provera
+record?"; Inspector Mode answers "does the Cloudinary account still agree with that
+record?"; the audit queue answers "which verifications exist, and which of them are
+flagged?".
+
+`/audit` retrieves assets from Cloudinary's Search API with their structured
+metadata attached and filters them on the `provera_*` values. **No queue database
+was added**, which was a build-plan requirement and also the honest design: the
+metadata mirror from Phase 4 is already an index, and a second store would be a
+second thing that can disagree with the first.
+
+Three consequences of reading from Cloudinary, all deliberate:
+
+* A row exists only while the asset exists. Deleting the asset removes it from the
+  queue, and the page says so.
+* A `provera_record_id` that does not parse is reported as *not a record*, so a
+  tampered metadata value cannot produce a working link.
+* A record with no recorded score cannot satisfy a score filter and sorts last in
+  both directions. An unknown score is never turned into a `0`.
+
+The filters run in the application, not in Cloudinary's index, because this
+account's Search API rejects every `metadata_*` expression (measured — three
+syntax variants, all rejected at field resolution). The response states the split
+in `filterAuthority` / `sortAuthority` and the page repeats it, so the UI never
+implies Cloudinary performed work it could not perform.
+
+Because filtering follows retrieval, an empty page is not proof that nothing
+matches. The result carries `pageExhaustedWithoutMatch` and the page offers a next
+page. This was not a theoretical concern: with a page size of two, the first page
+matched nothing and the second contained the record.
+
+Query parsing and filtering are pure and unit tested in `src/lib/audit/query.ts`;
+the retrieval is in `src/lib/cloudinary/audit.ts`. Full parameter list and response
+shape: [API Contract](API_CONTRACT.md). Measured Search API behaviour:
+[Cloudinary Integration](CLOUDINARY.md).
