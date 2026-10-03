@@ -69,7 +69,8 @@ function FilterForm({ query }: { query: AuditQuery }) {
   const input =
     "mt-1 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900";
   return (
-    <form method="get" className="rounded-lg border border-slate-200 bg-white p-4">
+    <section aria-label="Audit filters">
+      <form method="get" className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <label>
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -156,7 +157,8 @@ function FilterForm({ query }: { query: AuditQuery }) {
           for this page of results.
         </span>
       </div>
-    </form>
+      </form>
+    </section>
   );
 }
 
@@ -362,27 +364,31 @@ export default async function AuditPage({
       <div className="mt-6 space-y-4">
         <FilterForm query={query} />
         <RejectedFilters rejected={rejected} />
-        <ResultSummary result={result} query={query} />
+        <section aria-label="Verification records">
+          <ResultSummary result={result} query={query} />
 
-        {result.rows.length === 0 ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600">
-            <p className="font-medium text-slate-800">No matching verification records.</p>
-            {result.pageExhaustedWithoutMatch ? (
-              <p className="mt-2">
-                No record on this page matches, but Cloudinary has more assets to scan.
-                Because the filters run in Provera after retrieval, matching records may
-                be on a later page.
-              </p>
-            ) : (
-              <p className="mt-2">
-                Nothing on this page matched. Clear the filters, or run a verification on
-                the main page to create a record.
-              </p>
-            )}
-          </div>
-        ) : (
-          <QueueTable rows={result.rows} />
-        )}
+          {result.rows.length === 0 ? (
+            <div className="mt-2 rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600">
+              <p className="font-medium text-slate-800">No matching verification records.</p>
+              {result.pageExhaustedWithoutMatch ? (
+                <p className="mt-2">
+                  No record on this page matches, but Cloudinary has more assets to scan.
+                  Because the filters run in Provera after retrieval, matching records may
+                  be on a later page.
+                </p>
+              ) : (
+                <p className="mt-2">
+                  Nothing on this page matched. Clear the filters, or run a verification on
+                  the main page to create a record.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="mt-2">
+              <QueueTable rows={result.rows} />
+            </div>
+          )}
+        </section>
 
         <div className="flex flex-wrap items-center gap-3">
           {result.nextCursor ? (

@@ -61,7 +61,10 @@ export async function POST(request: Request) {
       ok: true,
       data: { asset },
     };
-    return NextResponse.json(body, { status: 200 });
+    // 201 Created, matching POST /api/verify: both endpoints create a new
+    // Cloudinary-side resource, and a client should not have to remember which
+    // of the two creation endpoints answers 200 and which answers 201.
+    return NextResponse.json(body, { status: 201 });
   } catch (error) {
     if (error instanceof CloudinaryConfigError) {
       return errorResponse("INTERNAL_ERROR", error.message, 500);

@@ -23,6 +23,50 @@ Error:
 }
 ```
 
+## POST `/api/upload`
+
+Stores the selected image in the configured Cloudinary account. This is the only
+endpoint that accepts user-supplied bytes; the file is validated **twice** — once
+on the declared MIME type and size, and once by sniffing the actual bytes, so a
+non-image renamed to `.jpg` is rejected.
+
+Request: `multipart/form-data` with a single `file` field.
+
+```json
+{
+  "ok": true,
+  "data": {
+    "asset": {
+      "publicId": "provera/qyk60bjnnavqpnjwvn89",
+      "secureUrl": "https://res.cloudinary.com/<cloud>/image/upload/v1/provera/qyk60….jpg",
+      "url": "http://res.cloudinary.com/<cloud>/image/upload/v1/provera/qyk60….jpg",
+      "format": "jpg",
+      "width": 864,
+      "height": 576,
+      "bytes": 109669,
+      "resourceType": "image",
+      "createdAt": "2026-10-01T17:17:41Z",
+      "originalName": "scene.jpg"
+    }
+  }
+}
+```
+
+Accepts `image/jpeg`, `image/png`, `image/gif` and `image/webp`, up to 10 MB, and
+answers **201 Created** — the same status as `POST /api/verify`, since both create a
+Cloudinary-side resource.
+
+Uploading does **not** analyse the asset and does **not** create a verification
+record. Analysis and verification are separate, explicit steps, so an upload can
+never silently produce a scored claim.
+
+### Errors
+
+- `INVALID_INPUT` (400) — no file, empty file, unsupported declared type, bytes that do not match any supported image format, or a file over the 10 MB limit.
+- `UPLOAD_FAILED` (502) — Cloudinary rejected the upload.
+- `UNAUTHORIZED` (401) — Cloudinary rejected the credentials.
+- `INTERNAL_ERROR` (500) — Cloudinary is not configured.
+
 ## POST `/api/analyze`
 
 ### Purpose

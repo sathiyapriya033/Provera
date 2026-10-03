@@ -203,14 +203,14 @@ function MetadataSection({ metadata }: { metadata: MetadataComparison }) {
               {metadata.fields.map((field) => (
                 <tr key={field.field} className="border-b border-slate-100 last:border-b-0">
                   <td className="py-2 pr-3 font-mono text-xs text-slate-700">{field.field}</td>
-                  <td className="py-2 pr-3 font-mono text-xs text-slate-900">
+                  <td className="py-2 pr-3 font-mono text-xs break-all text-slate-900">
                     {String(field.expected) === "" ? (
                       <span className="font-sans text-slate-400">empty</span>
                     ) : (
                       String(field.expected)
                     )}
                   </td>
-                  <td className="py-2 pr-3 font-mono text-xs text-slate-900">
+                  <td className="py-2 pr-3 font-mono text-xs break-all text-slate-900">
                     {field.live === null ? (
                       <span className="font-sans text-slate-400">not set</span>
                     ) : (
@@ -599,7 +599,7 @@ function DerivativesSection({ report }: { report: InspectionReport }) {
                     </td>
                     <td className="py-2 pr-3 font-mono text-xs">{shown(entry.bytes, "?")}</td>
                     <td className="py-2 pr-3 font-mono text-xs">{entry.componentCount}</td>
-                    <td className="py-2 font-mono text-[11px] text-slate-500">
+                    <td className="py-2 pr-3 font-mono text-xs break-all text-slate-500">
                       {shown(entry.transformationSignature, "not reported")}
                     </td>
                   </tr>

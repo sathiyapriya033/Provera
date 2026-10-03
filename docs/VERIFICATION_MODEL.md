@@ -366,6 +366,82 @@ Report assembly (`src/lib/inspection/inspect.ts`) is pure and independently unit
 tested; the Cloudinary calls live in `src/lib/inspection/collect.ts`. Measured
 Admin API behaviour and the full list of limits: [Cloudinary Integration](CLOUDINARY.md).
 
+## Hardening (Phase 9 — implemented)
+
+The build plan asks for the named cases to be exercised rather than assumed. They
+were run against the live account, and the run is recorded here because what it
+found matters more than that it passed.
+
+### Cases exercised (live)
+
+| Case | What was run | Observed |
+|---|---|---|
+| Clean | 1600×1200 detailed colour scene, claim supplied | score **84 VERIFIED**, coverage 55 |
+| Suspicious | 24×18 flat single-colour image, unrelated claim | score **61 REVIEW**, coverage 55, `concern:mediaQuality` raised |
+| Inconsistent | Claim content that does not match the image | recorded as supplied; never scored against content, because OCR is unavailable |
+| Invalid input | Text bytes declared as `image/jpeg`; `application/pdf`; empty file; no body; malformed JSON; array body; missing / empty / non-string / overlong `publicId`; overlong context | all rejected with a specific reason |
+| Missing analysis | The account has no OCR add-on, so `ocrClaim` is always unavailable | coverage 55, `unavailable:ocrClaim` flagged, the signal shown as *unavailable* and never as `0` |
+| Invalid record | 5 malformed IDs (including `../../etc/passwd`) and 1 unknown-but-valid ID | 400 / 404 on every endpoint; honest states on the pages |
+
+The clean case scoring 84 and the suspicious case 61, with a media-quality concern
+raised only on the flat image, is the engine behaving as documented rather than a
+tautology: the fixtures differ and the verdict differs.
+
+### Integrity round trip
+
+Rewriting the stored score from 84 to 100 was detected everywhere it should be:
+`GET /api/verify/:id` reports `integrity.verified = false`, the public page renders
+the "hash NOT reproduced" warning, and Inspector Mode reports
+`integrityVerified: false`. Restoring the file restores the check. No endpoint
+silently re-hashed the tampered record.
+
+### Failures this phase found and fixed
+
+1. **`POST /api/upload` answered `200` for a creation** while `POST /api/verify`
+   answered `201`. Both create a Cloudinary-side resource, so upload now answers
+   `201` as well.
+2. **`docs/API_CONTRACT.md` had no `POST /api/upload` section** — the endpoint had
+   been documented nowhere. It is now, including the byte-level validation and the
+   fact that uploading neither analyses nor creates a record.
+3. **`/audit` had no labelled regions.** The filter form and the results are now
+   `<section aria-label>` elements, matching the other pages.
+4. **A 64-character record hash sat in a table cell with no `break-all`.** Inside
+   the scrollable table it forced a table wider than the phone viewport. Fixed in
+   the metadata and derivative tables.
+
+### Secret scan
+
+`CLOUDINARY_API_SECRET` and `CLOUDINARY_API_KEY` were searched for across:
+
+- every tracked file (73 files) and generic secret shapes (`sk_…`, private-key
+  blocks, AWS keys, bearer tokens, password assignments);
+- **every blob in the entire git history** (132 blobs);
+- `.env.local` / `.env` are git-ignored and `.env.example` leaves every credential
+  empty;
+- all seven live HTML and JSON responses.
+
+Result: no secrets found. `CLOUDINARY_API_SECRET` never leaves the server; the
+artifact URL is signed there and only the derived URL is returned.
+
+### Presentation checks
+
+Rendered markup (with Next's inline RSC payload and its `<table hidden>` streaming
+placeholders excluded) was checked for: every visible table inside an
+`overflow-x-auto` wrapper, every long identifier inside a `break-all` ancestor, no
+fixed multi-column base grid, a viewport meta tag, a labelled nav with
+`aria-current`, exactly one `<h1>` per page, alt text on every image, and no
+authenticity claim that is not a negation.
+
+`next/image` was exercised for real: the optimizer returns `200 image/*` for
+Cloudinary sources and refuses a non-Cloudinary host with `400`.
+
+### What was not verified
+
+No browser was available, so layout was checked by inspecting the rendered markup
+and the generated CSS classes — not by rendering at real viewport widths. The
+checks above cover the failure modes that markup inspection can detect; visual
+refinement on a real device is still worth doing before submission.
+
 ## Audit queue (Phase 8 — implemented)
 
 The third reading of a record. The verification page answers "what did Provera

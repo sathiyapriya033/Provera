@@ -121,6 +121,25 @@ Two things the queue deliberately does not do, because doing them quietly would 
 
 Cloudinary's Search API **cannot** filter on these structured metadata fields on this account — every `metadata_*` expression is rejected with *"Field … not supported"* — so retrieval, ordering and paging are Cloudinary-side while the status and score filters run in Provera over the metadata Cloudinary returns. The response says which side did what, and the page states it. Full measured evidence, including three rejected syntax variants, is in [Cloudinary Integration](docs/CLOUDINARY.md).
 
+## Hardening (Phase 9 — implemented)
+
+Every case the build plan names was exercised against the live account — clean, suspicious, inconsistent, invalid input, missing analysis, invalid record — plus a secret scan and a presentation pass. **65 hardening checks, 43 presentation checks and 133 unit tests pass.**
+
+The engine demonstrably discriminates: a detailed 1600×1200 scene scored **84 VERIFIED**, while a 24×18 flat single-colour image scored **61 REVIEW** and raised a `concern:mediaQuality` flag that the clean image did not.
+
+Tampering with a stored record is detected everywhere it should be — the API reports `integrity.verified = false`, the public page shows the warning, and Inspector Mode flags it — and restoring the file restores the check. Nothing silently re-hashes a tampered record.
+
+Four real problems were found and fixed:
+
+- `POST /api/upload` returned `200` for a creation while `POST /api/verify` returned `201`; both now return `201`.
+- `POST /api/upload` was missing from the API contract entirely; it is now documented.
+- `/audit` had no labelled regions; its filter form and results are now `<section aria-label>` elements.
+- A 64-character record hash sat in a table cell without `break-all`, forcing a table wider than a phone viewport.
+
+**Secret scan: nothing found.** The API secret and key were searched for across 73 tracked files, generic secret shapes, **all 132 blobs in the git history**, and all seven live HTML/JSON responses. `.env.local` is git-ignored and `.env.example` has every credential empty.
+
+`next/image` was exercised for real — the optimizer serves Cloudinary sources and refuses other hosts. Layout itself was checked by inspecting rendered markup, **not** by rendering at real viewport widths; that limitation is stated in [Verification Model](docs/VERIFICATION_MODEL.md).
+
 ## Build order
 
 Follow `docs/BUILD_PLAN.md` exactly. Do not ask Cline to build the whole application in one prompt. Complete one phase, test it, review the diff, commit it, then move to the next phase.
