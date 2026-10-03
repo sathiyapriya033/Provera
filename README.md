@@ -46,22 +46,75 @@ It produces a transparent **Forensic Consistency Score** and a signed verificati
 
 ## Local setup
 
-The repository is intentionally documentation-first. Initialize the Next.js application in this repository after the baseline documentation commit.
+Requires Node.js 20.9 or newer (developed on 24) and a Cloudinary account.
 
-Recommended stack from the final specification:
+```bash
+npm install
+cp .env.example .env.local   # then fill in the three credentials below
+npm run dev                  # http://localhost:3000
+```
 
-- Next.js 14+
-- TypeScript
-- Tailwind CSS
-- Lucide Icons
-- Cloudinary Upload Widget / Upload API
-- `next-cloudinary`
-- `@cloudinary/url-gen`
-- Next.js Server Actions / API Routes
-- Node.js `crypto` for application-level record hashing
-- `qrcode-generator` for QR encoding, and `jsqr` (dev-only) to decode the result in tests
+Fill in `.env.local`:
 
-Create `.env.local` from `.env.example` and never commit secrets.
+| Variable | Where to get it |
+|---|---|
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary console → account name |
+| `CLOUDINARY_API_KEY` | Cloudinary console → API keys |
+| `CLOUDINARY_API_SECRET` | Cloudinary console → API keys |
+| `NEXT_PUBLIC_APP_URL` | Public base URL; defaults to `http://localhost:3000` |
+
+The three credentials are read **server-side only** and never leave the server;
+`NEXT_PUBLIC_APP_URL` is the only public one, and it decides where QR codes and
+verification links point.
+
+**Account prerequisite.** Verification writes seven structured metadata fields to
+each asset — `provera_status`, `provera_score`, `provera_record_id`,
+`provera_record_hash`, `provera_timestamp`, `provera_version` and `provera_flags`.
+Create them once in the Cloudinary console (Settings → Structured metadata); an
+upload and analysis still work without them, but `POST /api/verify` fails
+deliberately rather than recording a verification it cannot mirror.
+
+### Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Development server |
+| `npm run build` / `npm start` | Production build and server |
+| `npm run lint` / `npm run typecheck` | ESLint / `tsc --noEmit` |
+| `npm test` | Unit tests (`node --test`, no runner dependency) |
+
+### Stack
+
+Only what the project actually uses:
+
+- **Next.js 16** (App Router, Route Handlers, Server Components) + React 19 + TypeScript
+- **Tailwind CSS 4**
+- **`cloudinary`** — Server SDK for upload, analysis, metadata, QR asset, search and URL signing
+- **`qrcode-generator`** — deterministic QR encoding (PNG written in-repo, no image library)
+- Node.js **`crypto`** — record hashing and ID generation
+- **`jsqr`** (dev-only) — decodes the generated QR in tests so correctness is verified, not assumed
+
+## Where things are
+
+| Route | Purpose |
+|---|---|
+| `/` | Upload → analyse → score → verify |
+| `/verify/{recordId}` | Public verification page (QR destination, no login) |
+| `/inspector?recordId=…` | Live Cloudinary state beside the record |
+| `/audit` | Search the verifications held in Cloudinary |
+
+| API | Purpose |
+|---|---|
+| `POST /api/upload` | Store an image (201) |
+| `POST /api/analyze` | Run the Cloudinary analysis workflow |
+| `POST /api/score` | Score a normalized analysis |
+| `POST /api/verify` | Create and persist a verification record (201) |
+| `GET /api/verify/{id}` | Stored record + recomputed integrity hash |
+| `GET /api/artifact/{id}` | Signed artifact, QR and delivery check |
+| `GET /api/inspector/{id}` | Inspector Mode report as JSON |
+| `GET /api/assets` | Audit queue as JSON |
+
+Full request and response shapes: [API Contract](docs/API_CONTRACT.md).
 
 ## Verification records (Phase 4 — implemented)
 
@@ -140,17 +193,8 @@ Four real problems were found and fixed:
 
 `next/image` was exercised for real — the optimizer serves Cloudinary sources and refuses other hosts. Layout itself was checked by inspecting rendered markup, **not** by rendering at real viewport widths; that limitation is stated in [Verification Model](docs/VERIFICATION_MODEL.md).
 
-## Build order
+## Repository status
 
-Follow `docs/BUILD_PLAN.md` exactly. Do not ask Cline to build the whole application in one prompt. Complete one phase, test it, review the diff, commit it, then move to the next phase.
+Phases 1–9 of [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md) are implemented and committed, one commit per phase. The build order and the phase-by-phase workflow live in [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md) and [docs/CLINE_WORKFLOW.md](docs/CLINE_WORKFLOW.md).
 
-## Final submission checklist
-
-- Track 1 selected
-- Public GitHub repository
-- README with problem, track, Cloudinary usage and setup
-- Working demo where possible
-- 2–4 minute demo video
-- No API keys or credentials in GitHub
-- Cloudinary feedback survey completed by every participant
-- Submission completed before the code freeze
+Everything claimed above was verified against a real Cloudinary account rather than asserted. Where a capability was unavailable or a provider behaviour differed from the documented expectation, that is recorded in the docs instead of being worked around silently — see [Analysis Capabilities](docs/ANALYSIS_CAPABILITIES.md) and [Cloudinary Integration](docs/CLOUDINARY.md).

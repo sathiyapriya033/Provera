@@ -15,6 +15,7 @@ import {
 } from "@/lib/audit/query";
 import { AuditQueryError, searchAuditQueueFromEnv, type AuditResult } from "@/lib/cloudinary/audit";
 import { CloudinaryConfigError } from "@/lib/cloudinary/config";
+import { PageShell } from "@/components/site/site-footer";
 
 /**
  * Audit queue (Phase 8): the searchable list of verifications, backed entirely by
@@ -67,15 +68,15 @@ function queueHref(query: AuditQuery, cursor: string | null): string {
 
 function FilterForm({ query }: { query: AuditQuery }) {
   const input =
-    "mt-1 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900";
+    "mt-1 w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900";
+  const labelClass =
+    "text-[11px] font-semibold uppercase tracking-wide text-slate-500";
   return (
     <section aria-label="Audit filters">
-      <form method="get" className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <form method="get" className="rounded-md border border-slate-200 bg-white p-4">
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <label>
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Status
-          </span>
+          <span className={labelClass}>Status</span>
           <select name="status" defaultValue={query.status ?? ""} className={input}>
             <option value="">Any status</option>
             {AUDIT_STATUSES.map((status) => (
@@ -86,9 +87,7 @@ function FilterForm({ query }: { query: AuditQuery }) {
           </select>
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Min score
-          </span>
+          <span className={labelClass}>Min score</span>
           <input
             name="minScore"
             type="number"
@@ -101,8 +100,7 @@ function FilterForm({ query }: { query: AuditQuery }) {
           />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Max score
+          <span className={labelClass}>Max score
           </span>
           <input
             name="maxScore"
@@ -116,8 +114,7 @@ function FilterForm({ query }: { query: AuditQuery }) {
           />
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Sort
+          <span className={labelClass}>Sort
           </span>
           <select name="sort" defaultValue={query.sort} className={input}>
             {AUDIT_SORTS.map((sort) => (
@@ -128,8 +125,7 @@ function FilterForm({ query }: { query: AuditQuery }) {
           </select>
         </label>
         <label>
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Per page
+          <span className={labelClass}>Per page
           </span>
           <input
             name="limit"
@@ -197,60 +193,39 @@ function ScoreCell({ score }: { score: number | null }) {
 
 function QueueTable({ rows }: { rows: AuditRow[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <table className="w-full min-w-[52rem] text-left text-sm">
+    <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
+      <table className="w-full min-w-[46rem] text-left text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-            <th className="px-3 py-2 font-semibold">Asset</th>
-            <th className="px-3 py-2 font-semibold">Record</th>
-            <th className="px-3 py-2 font-semibold">Status</th>
-            <th className="px-3 py-2 font-semibold">Score</th>
-            <th className="px-3 py-2 font-semibold">Verified at</th>
-            <th className="px-3 py-2 font-semibold">Flags</th>
+          <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-500">
+            <th scope="col" className="px-3 py-2 font-semibold">Record</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Status</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Score</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Verified</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Flags</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Asset</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.recordId} className="border-b border-slate-100 align-top last:border-b-0">
               <td className="px-3 py-2">
-                <div className="flex items-center gap-2">
-                  {row.secureUrl ? (
-                    <Image
-                      src={row.secureUrl}
-                      alt={`Asset ${row.publicId}`}
-                      width={56}
-                      height={56}
-                      className="h-14 w-14 rounded border border-slate-200 object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-14 w-14 items-center justify-center rounded border border-slate-200 bg-slate-50 text-[10px] text-slate-400">
-                      no image
-                    </span>
-                  )}
-                  <span className="break-all font-mono text-[11px] text-slate-500">
-                    {row.publicId}
-                  </span>
-                </div>
-              </td>
-              <td className="px-3 py-2">
                 <Link
                   href={`/verify/${row.recordId}`}
-                  className="font-mono text-xs font-medium text-slate-900 underline underline-offset-2 hover:text-slate-600"
+                  className="font-mono text-xs font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
                 >
                   {row.recordId}
                 </Link>
-                <br />
                 <Link
                   href={`/inspector?recordId=${row.recordId}`}
-                  className="text-[11px] text-slate-500 underline underline-offset-2 hover:text-slate-800"
+                  className="mt-0.5 block text-[11px] text-slate-500 underline underline-offset-2 hover:text-slate-700"
                 >
-                  Inspect in Cloudinary
+                  Inspect
                 </Link>
               </td>
               <td className="px-3 py-2">
                 {row.status ? (
                   <span
-                    className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STATUS_TONE[row.status] ?? "border-slate-200 bg-slate-100 text-slate-600"}`}
+                    className={`inline-block rounded border px-1.5 py-0.5 text-[11px] font-semibold ${STATUS_TONE[row.status] ?? "border-slate-200 bg-slate-50 text-slate-600"}`}
                   >
                     {row.status}
                   </span>
@@ -266,7 +241,7 @@ function QueueTable({ rows }: { rows: AuditRow[] }) {
               </td>
               <td className="px-3 py-2">
                 {row.flags.length === 0 ? (
-                  <span className="text-xs text-slate-500">none</span>
+                  <span className="text-xs text-slate-400">none</span>
                 ) : (
                   <ul className="space-y-0.5">
                     {row.flags.map((flag) => (
@@ -282,6 +257,26 @@ function QueueTable({ rows }: { rows: AuditRow[] }) {
                       </li>
                     ))}
                   </ul>
+                )}
+              </td>
+              <td className="px-3 py-2">
+                {row.secureUrl ? (
+                  <div className="flex items-center gap-2">
+                    <Image
+                      src={row.secureUrl}
+                      alt={`Asset ${row.publicId}`}
+                      width={40}
+                      height={40}
+                      className="h-10 w-10 shrink-0 rounded border border-slate-200 object-cover"
+                    />
+                    <span className="hash font-mono text-[10px] text-slate-500">
+                      {row.publicId}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="hash font-mono text-[10px] text-slate-500">
+                    {row.publicId}
+                  </span>
                 )}
               </td>
             </tr>
@@ -332,7 +327,8 @@ export default async function AuditPage({
     result = await searchAuditQueueFromEnv(query);
   } catch (error) {
     return (
-      <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:py-14">
+      <PageShell active="/audit">
+      <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
         <AuditHeader />
         <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
           <h2 className="font-semibold">
@@ -353,12 +349,14 @@ export default async function AuditPage({
             request.
           </p>
         </div>
-      </main>
+      </div>
+    </PageShell>
     );
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:py-14">
+    <PageShell active="/audit">
+      <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <AuditHeader />
 
       <div className="mt-6 space-y-4">
@@ -422,7 +420,8 @@ export default async function AuditPage({
         </Link>
         .
       </p>
-    </main>
+    </div>
+    </PageShell>
   );
 }
 

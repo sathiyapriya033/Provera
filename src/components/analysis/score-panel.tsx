@@ -44,27 +44,24 @@ const KIND_CLASSES: Record<ReasonKind, string> = {
 
 function ComponentRow({ component }: { component: ComponentResult }) {
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-3">
+    <div className="border-l-2 border-slate-200 pl-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-sm font-semibold text-slate-800">
-          {component.label}
-        </span>
+        <span className="text-sm font-medium text-slate-800">{component.label}</span>
         <span className="text-xs text-slate-500">weight {component.weight}%</span>
       </div>
       {component.status === "scored" ? (
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-          <span className="text-slate-800">
-            <span className="font-semibold">{component.score}</span>/100
+        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+          <span className="text-slate-700">
+            <span className="font-mono font-medium">{component.score}</span>/100
           </span>
-          <span className="text-slate-600">
-            contributes <span className="font-medium">{component.contribution}</span>{" "}
-            points
+          <span className="text-xs text-slate-500">
+            contributes <span className="font-medium">{component.contribution}</span> points
           </span>
         </div>
       ) : (
-        <p className="mt-1 text-sm text-amber-800">Excluded (unavailable)</p>
+        <p className="mt-0.5 text-sm text-amber-700">Excluded (unavailable)</p>
       )}
-      <p className="mt-1 text-xs leading-relaxed text-slate-500">
+      <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
         {component.summary}
       </p>
     </div>
@@ -110,12 +107,12 @@ export default function ScorePanel({ analysis }: { analysis: NormalizedAnalysis 
   return (
     <section
       aria-label="Forensic consistency score"
-      className="rounded-lg border border-slate-200 bg-white p-4"
+      className="rounded-md border border-slate-200 bg-white p-4 sm:p-5"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h4 className="text-sm font-semibold text-slate-800">
-            Forensic consistency score
+          <h4 className="text-sm font-semibold text-slate-900">
+            Consistency score
           </h4>
           <p className="mt-0.5 text-xs text-slate-500">
             Deterministic weighted scoring across the five signal categories.
@@ -143,54 +140,57 @@ export default function ScorePanel({ analysis }: { analysis: NormalizedAnalysis 
       )}
 
       {phase === "done" && result && statusStyle && (
-        <div className="mt-4 space-y-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <p className="text-4xl font-bold tracking-tight text-slate-900">
-              {result.score}
-              <span className="text-base font-medium text-slate-500">/100</span>
-            </p>
+        <div className="mt-4 border-t border-slate-200 pt-4">
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
             <span
               role="status"
-              className={`rounded-full border px-3 py-1 text-sm font-semibold ${statusStyle.className}`}
+              className={`rounded border px-2 py-0.5 text-xs font-semibold ${statusStyle.className}`}
             >
               {statusStyle.label}
             </span>
-            <span className="text-xs text-slate-500">
+            <p className="text-sm text-slate-600">
+              Consistency score{" "}
+              <span className="font-mono text-base font-medium text-slate-900">
+                {result.score}
+              </span>
+              <span className="text-slate-500">/100</span>
+            </p>
+            <p className="text-xs text-slate-500">
               coverage {result.coverage}/100 · engine {result.engineVersion}
-            </span>
+            </p>
           </div>
 
-          <div className="space-y-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
+          <div className="mt-3 border-l-2 border-slate-200 pl-3 text-xs leading-relaxed text-slate-600">
             <p>
               <span className="font-semibold text-slate-700">What VERIFIED means:</span>{" "}
               the available signals meet Provera&apos;s configured consistency
               threshold. It does not mean that authenticity has been proven.
             </p>
-            <p>
+            <p className="mt-1">
               The score is a product-defined consistency heuristic with
-              explicitly documented weights. It is not a scientifically
-              validated measurement and not a probability of fraud.
+              explicitly documented weights. It is not a scientifically validated
+              measurement and not a probability of fraud.
             </p>
           </div>
 
-          <div className="grid gap-2">
+          <div className="mt-4 grid gap-3">
             {result.components.map((component) => (
               <ComponentRow key={component.signal} component={component} />
             ))}
           </div>
 
-          <div>
-            <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="mt-5">
+            <h5 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Reasons
             </h5>
             <ul className="mt-2 space-y-1.5">
               {result.reasons.map((reason, index) => (
                 <li
                   key={`${reason.signal}-${index}`}
-                  className="flex items-start gap-2 text-sm text-slate-700"
+                  className="flex items-start gap-2 text-sm text-slate-600"
                 >
                   <span
-                    className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${KIND_CLASSES[reason.kind]}`}
+                    className={`mt-0.5 shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${KIND_CLASSES[reason.kind]}`}
                   >
                     {KIND_LABELS[reason.kind]}
                   </span>
@@ -201,19 +201,21 @@ export default function ScorePanel({ analysis }: { analysis: NormalizedAnalysis 
           </div>
 
           {result.unavailableSignals.length > 0 && (
-            <p className="text-xs text-slate-500">
-              {result.unavailableSignals.length} signal(s) unavailable and
-              excluded from scoring — see the reasons above. Missing signals are
-              never counted as inconsistencies.
+            <p className="mt-3 text-xs leading-relaxed text-slate-500">
+              {result.unavailableSignals.length} signal(s) unavailable and excluded
+              from scoring — see the reasons above. Missing signals are never counted
+              as inconsistencies.
             </p>
           )}
 
-          <RecordPanel publicId={analysis.publicId} context={analysis.context} />
+          <div className="mt-5 border-t border-slate-200 pt-4">
+            <RecordPanel publicId={analysis.publicId} context={analysis.context} />
+          </div>
 
           <button
             type="button"
             onClick={runScoring}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="mt-4 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
           >
             Recalculate
           </button>

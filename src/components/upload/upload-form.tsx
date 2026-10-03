@@ -90,7 +90,7 @@ export default function UploadForm() {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-md border border-slate-200 bg-white p-4 sm:p-5">
       <form
         onSubmit={handleSubmit}
         className="flex flex-col gap-4 sm:flex-row sm:items-end"
@@ -166,8 +166,8 @@ export default function UploadForm() {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,16rem)_1fr]">
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+          <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,15rem)_1fr]">
+            <div className="overflow-hidden rounded border border-slate-200 bg-slate-50">
               <Image
                 src={asset.secureUrl}
                 alt={`Uploaded asset ${asset.publicId}`}
@@ -221,13 +221,13 @@ export default function UploadForm() {
             </dl>
           </div>
 
-          <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            <p className="font-semibold text-slate-700">
+          <div className="mt-4 border-l-2 border-slate-200 pl-3 text-sm leading-relaxed text-slate-600">
+            <p className="font-semibold text-slate-800">
               Upload success does not mean analysis succeeded
             </p>
             <p className="mt-1">
-              The asset above was stored in Cloudinary. Run the analysis
-              workflow separately to obtain its signals.
+              The asset above was stored in Cloudinary. Run the analysis workflow
+              separately to obtain its signals.
             </p>
           </div>
 

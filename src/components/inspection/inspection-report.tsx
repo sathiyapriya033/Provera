@@ -8,11 +8,11 @@ import type {
 } from "@/lib/inspection/inspect";
 
 /**
- * Provera â€” Inspector Mode report view (Phase 7).
+ * Provera — Inspector Mode report view (Phase 7).
  *
  * Renders the report produced by `collectInspection()`: the Cloudinary asset as
  * it exists now, next to the verification record that describes it. Every row
- * states whether it was compared, matched or could not be read â€” nothing is
+ * states whether it was compared, matched or could not be read — nothing is
  * shown as agreeing when the underlying call failed, and the scope note is always
  * visible so the live read is not mistaken for the original analysis.
  */
@@ -29,7 +29,7 @@ const TONE_CLASS: Record<Tone, string> = {
 function Badge({ tone, children }: { tone: Tone; children: React.ReactNode }) {
   return (
     <span
-      className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${TONE_CLASS[tone]}`}
+      className={`inline-flex shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-semibold ${TONE_CLASS[tone]}`}
     >
       {children}
     </span>
@@ -49,14 +49,14 @@ function Section({
 }) {
   return (
     <section className="mt-8" aria-label={title}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </h2>
         {action}
       </div>
       {subtitle ? (
-        <p className="mt-1 text-xs leading-relaxed text-slate-500">{subtitle}</p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">{subtitle}</p>
       ) : null}
       <div className="mt-3">{children}</div>
     </section>
@@ -86,7 +86,7 @@ function Row({
 
 function Panel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">{children}</div>
+    <div className="rounded-md border border-slate-200 bg-white p-4">{children}</div>
   );
 }
 
@@ -277,7 +277,7 @@ function LiveAssetSection({ report }: { report: InspectionReport }) {
             />
             <Row label="format" value={shown(fields.format, "not reported")} />
             <Row label="version" value={shown(fields.version, "not reported")} />
-            <Row label="dimensions" value={shown(`${fields.width}Ã—${fields.height}`, "not reported")} />
+            <Row label="dimensions" value={shown(`${fields.width}×${fields.height}`, "not reported")} />
             <Row label="bytes" value={shown(fields.bytes, "not reported")} />
             <Row label="created_at" value={shown(fields.createdAt, "not reported")} />
             <Row label="last_updated" value={shown(fields.lastUpdated, "not reported")} />
@@ -429,7 +429,7 @@ function ArtifactSection({ artifact }: { artifact: ArtifactInspection }) {
                 label="optimization"
                 value={`${built.optimization.fetchFormat} / ${built.optimization.quality}`}
               />
-              <Row label="canvas" value={`${built.canvas.width}Ã—${built.canvas.height}`} />
+              <Row label="canvas" value={`${built.canvas.width}×${built.canvas.height}`} />
               <Row label="QR composited" value={built.hasQr ? "yes" : "no"} />
               <Row label="verification URL" value={built.verificationUrl} />
               <Row label="content type" value={shown(delivery.contentType, "not reported")} />
@@ -509,8 +509,8 @@ function QrSection({ report }: { report: InspectionReport }) {
           <dl>
             <Row label="public_id" value={qr.asset.publicId} />
             <Row label="destination" value={qr.asset.destination} />
-            <Row label="modules" value={`${qr.asset.moduleCount}Ã—${qr.asset.moduleCount}`} />
-            <Row label="png size" value={`${qr.asset.size}Ã—${qr.asset.size} px`} />
+            <Row label="modules" value={`${qr.asset.moduleCount}×${qr.asset.moduleCount}`} />
+            <Row label="png size" value={`${qr.asset.size}×${qr.asset.size} px`} />
             <Row label="version" value={qr.asset.version} />
             {qr.live?.available ? (
               <>
@@ -629,17 +629,16 @@ export default function InspectionReportView({
     record.status === "VERIFIED" ? "ok" : record.status === "REVIEW" ? "warn" : "bad";
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:py-14">
+    <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-            Inspector Mode
-          </p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Cloudinary workflow for {record.recordId}
+          <p className="text-sm font-medium text-blue-700">Inspector</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+            Cloudinary state for{" "}
+            <span className="font-mono text-xl">{record.recordId}</span>
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Read live at {report.generatedAt} Â· report {report.inspectionVersion}
+          <p className="mt-1 font-mono text-xs text-slate-500">
+            read {report.generatedAt} · {report.inspectionVersion}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -651,7 +650,7 @@ export default function InspectionReportView({
         </div>
       </div>
 
-      <p className="mt-4 rounded-lg border border-slate-200 bg-white p-3 text-xs leading-relaxed text-slate-600">
+      <p className="mt-4 border-l-2 border-slate-200 pl-3 text-xs leading-relaxed text-slate-600">
         {report.scope}
       </p>
 
@@ -701,7 +700,7 @@ export default function InspectionReportView({
       <DerivativesSection report={report} />
 
       <footer className="mt-10 flex flex-wrap items-center gap-4 border-t border-slate-200 pt-6 text-xs text-slate-500">
-        <span>Provera Â· Inspector Mode</span>
+        <span>Provera · Inspector Mode</span>
         <Link
           href={`/api/inspector/${report.record.recordId}`}
           className="font-medium underline hover:text-slate-900"
@@ -714,11 +713,11 @@ export default function InspectionReportView({
         >
           Raw record JSON
         </Link>
-        <Link href="/" className="font-medium underline hover:text-slate-900">
+        <Link href="/workflow" className="font-medium text-blue-700 underline hover:text-blue-900">
           Start a new verification
         </Link>
       </footer>
-    </main>
+    </div>
   );
 }
 

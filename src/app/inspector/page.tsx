@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CloudinaryConfigError } from "@/lib/cloudinary/config";
 import InspectionReportView from "@/components/inspection/inspection-report";
+import { PageShell } from "@/components/site/site-footer";
 import { collectInspection } from "@/lib/inspection/collect";
 import type { InspectionReport } from "@/lib/inspection/inspect";
 import { RECORD_ID_PATTERN } from "@/lib/verification/record";
@@ -22,9 +23,9 @@ import { VerificationStoreError, listRecentRecords } from "@/lib/verification/st
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Provera — Inspector Mode",
+  title: "Provera — Inspector",
   description:
-    "Inspect the Cloudinary workflow behind a Provera verification record: asset, metadata, transformation, signed URL and optimization.",
+    "Inspect the live Cloudinary account state behind a verification record: asset identity, structured metadata, transformation, signed URL and generated derivatives.",
 };
 
 function Message({
@@ -58,11 +59,10 @@ async function RecordPicker() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
-      <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-        Inspector Mode
-      </p>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+    <PageShell active="/inspector">
+      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+      <p className="text-sm font-medium text-blue-700">Inspector</p>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
         Inspect the Cloudinary workflow
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-slate-600">
@@ -138,7 +138,8 @@ async function RecordPicker() {
         not prove that a photograph is authentic, and it reports mismatches rather
         than repairing them.
       </p>
-    </main>
+    </div>
+    </PageShell>
   );
 }
 
@@ -188,7 +189,8 @@ export default async function InspectorPage({
 
   if (!RECORD_ID_PATTERN.test(trimmed)) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
+      <PageShell active="/inspector">
+      <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
         <Message title="Invalid record ID" tone="warn">
           <p>
             <span className="font-mono">{trimmed}</span> is not a Provera record ID.
@@ -200,19 +202,25 @@ export default async function InspectorPage({
             </Link>
           </p>
         </Message>
-      </main>
+      </div>
+    </PageShell>
     );
   }
 
   const outcome = await loadInspection(trimmed);
 
   if (outcome.kind === "ok") {
-    return <InspectionReportView report={outcome.report} />;
+    return (
+      <PageShell active="/inspector">
+        <InspectionReportView report={outcome.report} />
+      </PageShell>
+    );
   }
 
   if (outcome.kind === "record-not-found") {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
+      <PageShell active="/inspector">
+      <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
         <Message title="Record not found" tone="warn">
           <p>{outcome.message}</p>
           <p className="mt-3">
@@ -227,13 +235,15 @@ export default async function InspectorPage({
             </Link>
           </p>
         </Message>
-      </main>
+      </div>
+    </PageShell>
     );
   }
 
   if (outcome.kind === "not-configured") {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
+      <PageShell active="/inspector">
+      <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
         <Message title="Cloudinary is not configured" tone="bad">
           <p>{outcome.message}</p>
           <p className="mt-3">
@@ -241,12 +251,14 @@ export default async function InspectorPage({
             credentials. No Cloudinary value is shown when they are missing.
           </p>
         </Message>
-      </main>
+      </div>
+    </PageShell>
     );
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
+    <PageShell active="/inspector">
+      <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
       <Message title="Inspection failed" tone="bad">
         <p>
           The record could not be inspected because of an unexpected server error. No
@@ -259,6 +271,7 @@ export default async function InspectorPage({
           </Link>
         </p>
       </Message>
-    </main>
+    </div>
+    </PageShell>
   );
 }

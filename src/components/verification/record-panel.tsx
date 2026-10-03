@@ -83,11 +83,11 @@ export default function RecordPanel({
   return (
     <section
       aria-labelledby="record-heading"
-      className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+      className="rounded-md border border-slate-200 bg-white p-4 sm:p-5"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h4 id="record-heading" className="text-sm font-semibold text-slate-800">
+          <h4 id="record-heading" className="text-sm font-semibold text-slate-900">
             Verification record
           </h4>
           <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-500">
@@ -121,125 +121,171 @@ export default function RecordPanel({
       )}
 
       {phase === "done" && record && (
-        <div className="mt-4 space-y-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <p className="text-3xl font-bold tracking-tight text-slate-900">
-              {record.score}
-              <span className="text-base font-medium text-slate-500">/100</span>
-            </p>
+        <div className="mt-5 border-t border-slate-200 pt-5">
+          {/* Identity first: the record ID is what every later stage references. */}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Verification record
+              </p>
+              <p className="mt-1 font-mono text-lg font-medium tracking-tight text-slate-900">
+                {record.recordId}
+              </p>
+            </div>
             <span
-              className={`rounded-full border px-3 py-1 text-sm font-semibold ${STATUS_CLASSES[record.status]}`}
+              className={`rounded border px-2 py-0.5 text-xs font-semibold ${STATUS_CLASSES[record.status]}`}
             >
               {record.status}
             </span>
-            <span className="font-mono text-sm text-slate-700">
-              {record.recordId}
-            </span>
           </div>
 
-          <dl className="grid gap-3 rounded-md border border-slate-200 bg-white p-3 sm:grid-cols-2">
-            <Field
-              label="Asset"
-              value={`${record.asset.resourceType} · ${record.asset.publicId}`}
-            />
-            <Field label="Timestamp" value={record.timestamp} />
-            <Field label="Engine version" value={record.engineVersion} />
-            <Field label="Record schema" value={record.schemaVersion} />
-            <Field
-              label="Coverage"
-              value={`${record.coverage}/100 scoreable weight`}
-            />
-            <Field
-              label="Signals"
-              value={[
-                `metadata ${record.signals.metadataAvailability ?? "excluded"}`,
-                `ocr ${record.signals.ocrConsistency ?? "excluded"}`,
-                `visual ${record.signals.visualConsistency ?? "excluded"}`,
-                `duplicate ${record.signals.duplicateIndicator ?? "excluded"}`,
-                `quality ${record.signals.mediaQuality ?? "excluded"}`,
-              ].join(" · ")}
-            />
+          {/* Score is one attribute of the record, shown alongside the other
+              figures rather than as the headline number. */}
+          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-slate-200 pt-4 sm:grid-cols-4">
+            <div>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Score
+              </dt>
+              <dd className="mt-0.5 text-sm text-slate-900">
+                <span className="font-mono text-base font-medium">{record.score}</span>
+                <span className="text-slate-500">/100</span>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Coverage
+              </dt>
+              <dd className="mt-0.5 text-sm text-slate-900">{record.coverage}%</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Recorded
+              </dt>
+              <dd className="mt-0.5 text-sm text-slate-900">{record.timestamp}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Asset
+              </dt>
+              <dd className="hash mt-0.5 text-sm text-slate-900">{record.asset.publicId}</dd>
+            </div>
           </dl>
 
-          <div className="rounded-md border border-slate-200 bg-white p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Record hash (SHA-256 of the canonical record)
-            </p>
-            <p className="mt-1 break-all font-mono text-xs text-slate-700">
-              {record.recordHash}
-            </p>
-            <p className="mt-2 text-xs text-slate-600">
-              Integrity check:{" "}
-              <span
-                className={
-                  integrityVerified
-                    ? "font-medium text-emerald-700"
-                    : "font-medium text-red-700"
-                }
-              >
-                {integrityVerified
-                  ? "reproduced from the stored record"
-                  : "could not be reproduced"}
-              </span>
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              The hash detects later edits to this record. It does not make the
-              original image immutable and does not prove authenticity.
-            </p>
-          </div>
+          <section className="mt-5" aria-label="Evidence signals">
+            <h5 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Evidence &amp; signals
+            </h5>
+            <ul className="mt-2 divide-y divide-slate-100 border-y border-slate-200">
+              {(
+                [
+                  ["Metadata availability", record.signals.metadataAvailability],
+                  ["OCR / claim consistency", record.signals.ocrConsistency],
+                  ["Visual consistency", record.signals.visualConsistency],
+                  ["Duplicate indicator", record.signals.duplicateIndicator],
+                  ["Media quality", record.signals.mediaQuality],
+                ] as const
+              ).map(([label, value]) => (
+                <li key={label} className="flex items-baseline justify-between gap-3 py-1.5">
+                  <span className="text-sm text-slate-600">{label}</span>
+                  {value === null ? (
+                    <span className="text-xs text-amber-700">unavailable — excluded</span>
+                  ) : (
+                    <span className="font-mono text-sm text-slate-900">{value}/100</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="mt-5" aria-label="Recorded reasons">
+            <h5 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Reasons ({record.reasons.length})
+            </h5>
+            <ul className="mt-2 space-y-1">
+              {record.reasons.map((reason, index) => (
+                <li key={`${index}-${reason}`} className="text-sm leading-relaxed text-slate-600">
+                  {reason}
+                </li>
+              ))}
+            </ul>
+          </section>
 
           {record.flags.length > 0 && (
-            <div>
-              <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <section className="mt-5" aria-label="Flags">
+              <h5 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 Flags
               </h5>
-              <ul className="mt-2 flex flex-wrap gap-2">
+              <ul className="mt-2 flex flex-wrap gap-1.5">
                 {record.flags.map((flag) => (
                   <li
                     key={flag}
-                    className={`rounded-full border px-2 py-0.5 font-mono text-[11px] ${
+                    className={`rounded border px-1.5 py-0.5 font-mono text-[11px] ${
                       flag.startsWith("concern:")
                         ? "border-red-200 bg-red-50 text-red-800"
-                        : "border-slate-200 bg-slate-100 text-slate-700"
+                        : "border-slate-200 bg-slate-50 text-slate-600"
                     }`}
                   >
                     {flag}
                   </li>
                 ))}
               </ul>
-            </div>
+            </section>
           )}
 
-          <details className="rounded-md border border-slate-200 bg-white p-3">
-            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Recorded reasons ({record.reasons.length})
-            </summary>
-            <ul className="mt-2 space-y-1 text-sm text-slate-700">
-              {record.reasons.map((reason, index) => (
-                <li key={`${index}-${reason}`}>{reason}</li>
-              ))}
-            </ul>
-          </details>
+          <section className="mt-5" aria-label="Record integrity">
+            <h5 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Record integrity
+            </h5>
+            <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+              <Field label="Engine version" value={record.engineVersion} />
+              <Field label="Record schema" value={record.schemaVersion} />
+            </dl>
+            <p className="hash mt-2 rounded border border-slate-200 bg-slate-50 px-2.5 py-2 font-mono text-[11px] leading-relaxed text-slate-700">
+              {record.recordHash}
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+              Integrity check:{" "}
+              <span
+                className={
+                  integrityVerified ? "font-medium text-emerald-700" : "font-medium text-red-700"
+                }
+              >
+                {integrityVerified
+                  ? "reproduced from the stored record"
+                  : "could not be reproduced"}
+              </span>
+              . The hash detects later edits to this record. It does not make the
+              original image immutable and does not prove authenticity.
+            </p>
+          </section>
 
-          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-            <span>Metadata field prefix: provera_*</span>
+          <nav
+            aria-label="Record destinations"
+            className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200 pt-4 text-sm"
+          >
             <a
-              className="font-medium text-slate-700 underline hover:text-slate-900"
+              className="font-medium text-blue-700 underline underline-offset-4 hover:text-blue-900"
               href={`/verify/${record.recordId}`}
               target="_blank"
               rel="noreferrer"
             >
-              Open public verification page
+              Open verification page
             </a>
             <a
-              className="font-medium text-slate-700 underline hover:text-slate-900"
+              className="font-medium text-blue-700 underline underline-offset-4 hover:text-blue-900"
+              href={`/inspector?recordId=${record.recordId}`}
+            >
+              Inspect in Cloudinary
+            </a>
+            <a
+              className="text-slate-500 underline underline-offset-4 hover:text-slate-700"
               href={`/api/verify/${record.recordId}`}
               target="_blank"
               rel="noreferrer"
             >
-              Retrieve stored record (JSON)
+              Record JSON
             </a>
-          </div>
+          </nav>
 
           <ArtifactPanel recordId={record.recordId} />
         </div>

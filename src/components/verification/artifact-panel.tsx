@@ -69,12 +69,12 @@ export default function ArtifactPanel({ recordId }: { recordId: string }) {
   return (
     <section
       aria-labelledby="artifact-heading"
-      className="rounded-lg border border-slate-200 bg-white p-4"
+      className="rounded-md border border-slate-200 bg-white p-4 sm:p-5"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h4 id="artifact-heading" className="text-sm font-semibold text-slate-800">
-            Signed verification artifact
+          <h4 id="artifact-heading" className="text-sm font-semibold text-slate-900">
+            Signed artifact &amp; QR
           </h4>
           <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-500">
             Renders this record as a Cloudinary dynamic transformation of the
@@ -104,9 +104,11 @@ export default function ArtifactPanel({ recordId }: { recordId: string }) {
       )}
 
       {phase === "done" && artifact && delivery && (
-        <div className="mt-4 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,20rem)_1fr]">
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-900">
+        <div className="mt-5 border-t border-slate-200 pt-5">
+          <div className="grid gap-5 sm:grid-cols-[minmax(0,18rem)_1fr]">
+            {/* The artifact is a dark canvas by design — the dark backdrop is the
+                image's own background, not a dark theme. */}
+            <div className="overflow-hidden rounded border border-slate-200">
               <Image
                 src={artifact.url}
                 alt={`Provera verification artifact for record ${artifact.recordId}`}
@@ -115,37 +117,52 @@ export default function ArtifactPanel({ recordId }: { recordId: string }) {
                 className="h-auto w-full"
               />
             </div>
-            {payload?.qr && (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Scan to verify
-                </p>
-                <div className="mx-auto mt-2 w-40 overflow-hidden rounded border border-slate-200 bg-white">
-                  <Image
-                    src={payload.qr.url}
-                    alt={`QR code to the verification page for record ${artifact.recordId}`}
-                    width={payload.qr.size}
-                    height={payload.qr.size}
-                    className="h-auto w-full"
-                  />
+
+            {payload?.qr ? (
+              <div>
+                {/* artifact → QR → public page, stated as a chain */}
+                <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                  <li className="text-slate-700">Verification artifact</li>
+                  <li aria-hidden="true">→</li>
+                  <li className="text-slate-700">QR code</li>
+                  <li aria-hidden="true">→</li>
+                  <li className="text-slate-700">Public verification page</li>
+                </ol>
+
+                <div className="mt-3 flex flex-wrap items-start gap-4">
+                  <div className="w-32 shrink-0 overflow-hidden rounded border border-slate-200 bg-white">
+                    <Image
+                      src={payload.qr.url}
+                      alt={`QR code linking to the verification page for record ${artifact.recordId}`}
+                      width={payload.qr.size}
+                      height={payload.qr.size}
+                      className="h-auto w-full"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="hash font-mono text-[11px] leading-relaxed text-slate-600">
+                      {payload.qr.destination}
+                    </p>
+                    <a
+                      className="mt-3 inline-flex items-center rounded border border-blue-700 bg-blue-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-800"
+                      href={payload.qr.destination}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open verification page
+                    </a>
+                    <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+                      The code is printed on the artifact at left, so the image
+                      itself carries a route back to the record. It resolves only
+                      for the application URL configured on this deployment.
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-2 break-all font-mono text-[11px] text-slate-600">
-                  {payload.qr.destination}
-                </p>
-                <a
-                  className="mt-2 inline-block text-xs font-medium text-slate-700 underline hover:text-slate-900"
-                  href={payload.qr.destination}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open the public verification page
-                </a>
-                <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                  The QR is printed on the artifact above and points to this
-                  record&apos;s public page. It works only for the application URL
-                  configured on this deployment.
-                </p>
               </div>
+            ) : (
+              <p className="text-sm text-slate-500">
+                No QR asset was produced for this artifact.
+              </p>
             )}
           </div>
 

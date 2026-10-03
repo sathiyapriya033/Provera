@@ -155,24 +155,26 @@ export default async function VerifyPage({
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12">
-      <header className="border-b border-slate-200 pb-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Provera · Signed verification record
+      <header className="border-b border-slate-200 pb-5">
+        <p className="text-sm font-medium text-blue-700">Provera</p>
+        <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Verification record
         </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        <h1 className="mt-1 break-all font-mono text-2xl font-medium tracking-tight text-slate-900">
           {record.recordId}
         </h1>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <p className="text-4xl font-bold tracking-tight text-slate-900">
-            {record.score}
-            <span className="text-base font-medium text-slate-500">/100</span>
-          </p>
+        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
           <StatusPill status={record.status} />
-          <span className="text-sm text-slate-500">
-            Forensic Consistency Score
-          </span>
+          <p className="text-sm text-slate-600">
+            Consistency score{" "}
+            <span className="font-mono text-base font-medium text-slate-900">
+              {record.score}
+            </span>
+            <span className="text-slate-500">/100</span>
+          </p>
+          <p className="text-xs text-slate-500">coverage {record.coverage}%</p>
         </div>
-        <p className="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
+        <p className="mt-4 border-l-2 border-slate-200 pl-3 text-xs leading-relaxed text-slate-600">
           This page shows what Provera recorded and assessed for this asset at the
           moment of verification. The score is a documented consistency heuristic,
           not a probability of fraud, and nothing here proves that the photograph
@@ -190,10 +192,13 @@ export default async function VerifyPage({
         </p>
       )}
 
-      <section className="mt-6" aria-label="Verified asset">
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,14rem)_1fr]">
+      <section className="mt-6" aria-label="Media asset">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Media asset
+        </h2>
+        <div className="mt-3 grid gap-4 sm:grid-cols-[minmax(0,14rem)_1fr]">
           {record.asset.secureUrl && (
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+            <div className="overflow-hidden rounded border border-slate-200 bg-slate-50">
               <Image
                 src={record.asset.secureUrl}
                 alt={`Asset ${record.asset.publicId} recorded in this verification`}
@@ -220,11 +225,11 @@ export default async function VerifyPage({
         </div>
       </section>
 
-      <section className="mt-8" aria-label="Signals">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Signal breakdown
+      <section className="mt-8" aria-label="Evidence and signals">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Evidence &amp; signals
         </h2>
-        <dl className="mt-3 rounded-lg border border-slate-200 bg-white p-4">
+        <dl className="mt-3 rounded-md border border-slate-200 bg-white p-4">
           {SIGNAL_DISPLAY.map(({ slot, component }) => {
             const value = record.signals[slot];
             return (
@@ -248,10 +253,10 @@ export default async function VerifyPage({
       </section>
 
       <section className="mt-8" aria-label="Recorded reasons">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           Recorded reasons
         </h2>
-        <ul className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
+        <ul className="mt-3 space-y-2 rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-700">
           {record.reasons.map((reason, index) => (
             <li key={`${index}-${reason}`}>{reason}</li>
           ))}
@@ -260,7 +265,7 @@ export default async function VerifyPage({
 
       {record.flags.length > 0 && (
         <section className="mt-8" aria-label="Flags">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             Flags
           </h2>
           <ul className="mt-3 flex flex-wrap gap-2">
@@ -281,10 +286,10 @@ export default async function VerifyPage({
       )}
 
       <section className="mt-8" aria-label="Record identity">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           Record identity and integrity
         </h2>
-        <dl className="mt-3 rounded-lg border border-slate-200 bg-white p-4">
+        <dl className="mt-3 rounded-md border border-slate-200 bg-white p-4">
           <Row label="Record ID" value={record.recordId} />
           <Row label="Recorded at" value={formatTimestamp(record.timestamp)} />
           <Row label="Engine version" value={record.engineVersion} />
@@ -309,10 +314,10 @@ export default async function VerifyPage({
 
       {record.context && (
         <section className="mt-8" aria-label="Submitted claim">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             Submitted claim
           </h2>
-          <p className="mt-3 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
+          <p className="mt-3 rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-700">
             {record.context}
           </p>
         </section>

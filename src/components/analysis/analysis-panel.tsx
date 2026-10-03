@@ -265,10 +265,10 @@ export default function AnalysisPanel({ publicId }: { publicId: string }) {
   }
 
   return (
-    <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4">
+    <div className="mt-4 rounded-md border border-slate-200 bg-white p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="font-semibold text-slate-700">Cloudinary analysis</p>
+          <p className="font-semibold text-slate-800">Cloudinary analysis</p>
           <p className="mt-1 text-sm text-slate-600">
             Run the configured Cloudinary analysis workflow on this asset and
             inspect the raw signals it returns.
@@ -348,14 +348,12 @@ export default function AnalysisPanel({ publicId }: { publicId: string }) {
               return (
                 <article
                   key={key}
-                  className="rounded-lg border border-slate-200 bg-white p-3"
+                  className="border-l-2 border-slate-200 pl-3"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-semibold text-slate-800">
-                      {title}
-                    </h4>
+                    <h4 className="text-sm font-medium text-slate-800">{title}</h4>
                     <span
-                      className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${style.className}`}
+                      className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${style.className}`}
                     >
                       {style.label}
                     </span>
