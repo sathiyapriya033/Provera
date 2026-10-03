@@ -116,7 +116,7 @@ Only what the project actually uses:
 
 Full request and response shapes: [API Contract](docs/API_CONTRACT.md).
 
-## Verification records (Phase 4 — implemented)
+## Verification records 
 
 `POST /api/verify` re-analyses an uploaded asset on the server, scores it with the
 deterministic forensic engine, builds a canonical verification record and persists
@@ -130,7 +130,7 @@ canonical record.
 
 Exact hash procedure, persistence limitations and endpoint details: [Verification Model](docs/VERIFICATION_MODEL.md) and [API Contract](docs/API_CONTRACT.md).
 
-## Signed verification artifact (Phase 5 — implemented)
+## Signed verification artifact 
 
 `GET /api/artifact/:recordId` renders the stored record as a Cloudinary dynamic transformation of the verified asset — a fixed 1200×1200 dark canvas with the photo letterboxed inside it, text layers carrying status, Forensic Consistency Score, record ID, short record hash, engine version, timestamp and the verification destination, and `f_auto`/`q_auto` for optimized delivery. Nothing is stored by the application: Cloudinary generates and caches the derived image on first request, and the API verifies with a `HEAD` request that an image really came back before reporting success.
 
@@ -138,7 +138,7 @@ Exact hash procedure, persistence limitations and endpoint details: [Verificatio
 - Cloudinary enforces delivery signatures only for restricted assets. These assets use the default public delivery, so the signature authenticates the *requested transformation* — any edit to it invalidates the signature — but it is not access control. Measured evidence is in [Cloudinary Integration](docs/CLOUDINARY.md).
 - An artifact is tamper-evident evidence of what was recorded and assessed at that moment. It is not proof that the photograph is authentic, and it is not immutable.
 
-## QR code and public verification page (Phase 6 — implemented)
+## QR code and public verification page
 
 Every artifact carries a QR code, printed bottom-left, that resolves to `{NEXT_PUBLIC_APP_URL}/verify/{recordId}` — a public page anyone can open with no login and no API key.
 
@@ -149,7 +149,7 @@ Every artifact carries a QR code, printed bottom-left, that resolves to `{NEXT_P
 - Malformed IDs and unknown-but-valid IDs get their own honest states; a missing record is never reported as a passed or failed verification.
 - The QR only resolves for the configured application URL: if the deployment moves, previously printed artifacts point at the old host.
 
-## Inspector Mode (Phase 7 — implemented)
+## Inspector Mode 
 
 `/inspector` reads the live Cloudinary account during the request and puts it next to the record, so the integration can be checked without trusting Provera's own summary. Pick a record from the list or paste an ID; the same report is available as JSON at `GET /api/inspector/:recordId`.
 
@@ -162,7 +162,7 @@ Every artifact carries a QR code, printed bottom-left, that resolves to `{NEXT_P
 
 The comparison was verified against the live account by writing `99` into `provera_score` on a verified asset: the report immediately showed that field as a mismatch, and returned to a clean 7/7 once the original value was written back. A section that cannot be produced (unreadable asset, failed QR upload, failed artifact delivery) is reported as unavailable with its reason and the rest of the report still renders — nothing is fabricated to fill a gap. Measured Admin API fields and the stated limits are in [Cloudinary Integration](docs/CLOUDINARY.md).
 
-## Audit queue (Phase 8 — implemented)
+## Audit queue 
 
 `/audit` is the searchable list of verifications. **There is no queue database** — every row is a Cloudinary asset whose `provera_*` structured metadata is read back during the request, so the metadata written in Phase 4 doubles as the index. Delete the asset in Cloudinary and the row disappears; the page says a row exists only while the asset does.
 
@@ -174,7 +174,7 @@ Two things the queue deliberately does not do, because doing them quietly would 
 
 Cloudinary's Search API **cannot** filter on these structured metadata fields on this account — every `metadata_*` expression is rejected with *"Field … not supported"* — so retrieval, ordering and paging are Cloudinary-side while the status and score filters run in Provera over the metadata Cloudinary returns. The response says which side did what, and the page states it. Full measured evidence, including three rejected syntax variants, is in [Cloudinary Integration](docs/CLOUDINARY.md).
 
-## Hardening (Phase 9 — implemented)
+## Hardening 
 
 Every case the build plan names was exercised against the live account — clean, suspicious, inconsistent, invalid input, missing analysis, invalid record — plus a secret scan and a presentation pass. **65 hardening checks, 43 presentation checks and 133 unit tests pass.**
 
