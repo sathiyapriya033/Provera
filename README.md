@@ -4,6 +4,8 @@
 
 Provera turns uploaded field media into a transparent verification record by combining Cloudinary media ingestion, supported AI/media analysis, OCR/visual signals, application-level deterministic consistency checks, structured metadata, signed transformations, optimized delivery, and QR verification.
 
+Provera URL-https://provera-nu.vercel.app/
+
 ## Hackathon
 
 - **Event:** Pixels to Products — Cloudinary AI Hackathon 2026
